@@ -1,0 +1,9 @@
+language: python
+python:
+  - "3.6"
+
+install:
+  - cd $TRAVIS_BUILD_DIR/code && pip install -r requirements.txt
+
+script:
+  - cd $TRAVIS_BUILD_DIR/code && python3 -m unittest
