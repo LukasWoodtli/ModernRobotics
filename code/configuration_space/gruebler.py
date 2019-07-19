@@ -30,16 +30,16 @@ def gruebler3(N, fs):
 
 
 def dof_of_joint(joint_type):
-    dofs = {
-        ["revolute", "r", "scharnier"]: 1,
-        ["prismatic", "p", "schubgelenk"]: 1,
-        ["cylindrical", "c", "drehchubgelenk"]: 2,
-        ["universal", "u", "kardangelenk"]: 2,
-        ["spherical", "s", "kugelgelenk"]: 3
-    }
+    dofs = [
+        [["revolute", "r", "scharnier"], 1],
+        [["prismatic", "p", "schubgelenk"], 1],
+        [["cylindrical", "c", "drehchubgelenk"], 2],
+        [["universal", "u", "kardangelenk"], 2],
+        [["spherical", "s", "kugelgelenk"], 3]
+    ]
 
-    for k, v in dofs:
-        if joint_type.lower() in k:
-            return v
+    for k in dofs:
+        if joint_type.lower() in k[0]:
+            return k[1]
 
     raise RuntimeError(f"Can't find joint type: {joint_type}")
