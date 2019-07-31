@@ -1,5 +1,7 @@
 """Grueblers formula. See MR p. 15f"""
 
+from builtins import RuntimeError
+
 
 def _gruebler(m, N, J, fs):
     """
@@ -9,27 +11,34 @@ def _gruebler(m, N, J, fs):
     :param J: number of joints
     :param fs: list of dof provided by each joint
     """
-    assert m == 3 or m == 6
+    assert m in (3, 6)
     assert J == len(fs)
     return m * (N - 1 - J) + sum(fs)
 
 
 def gruebler(m, N, fs):
-    """See _gruebler for argument description."""
+    """See ~_gruebler for argument description."""
     return _gruebler(m, N, len(fs), fs)
 
 
 def gruebler2(N, fs):
+    """See ~_gruebler for argument description."""
     RIGID_BODY_DOF_2D = 3
     return gruebler(RIGID_BODY_DOF_2D, N, fs)
 
 
 def gruebler3(N, fs):
+    """See ~_gruebler for argument description."""
     RIGID_BODY_DOF_3D = 6
     return gruebler(RIGID_BODY_DOF_3D, N, fs)
 
 
 def dof_of_joint(joint_type):
+    """
+    Get the number of freedoms for a given joint type.
+    :param joint_type: The joint type.
+    :return: The number of freedoms.
+    """
     dofs = [
         [["revolute", "r", "scharnier"], 1],
         [["prismatic", "p", "schubgelenk"], 1],

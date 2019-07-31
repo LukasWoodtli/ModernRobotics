@@ -1,7 +1,9 @@
-import robopy.base.transforms as tf
-import numpy as np
+"""Scratch file"""
 import math
+import numpy as np
+import robopy.base.transforms as tf
 import matplotlib.pyplot as plt
+import modern_robotics
 
 
 print(tf.rot2(0.0))
@@ -17,7 +19,7 @@ c0 = R[:, 0]
 c1 = R[:, 1]
 
 # Columns are orthogonal to each other
-assert np.dot(np.transpose(c0),c1) == 0
+assert np.dot(np.transpose(c0), c1) == 0
 
 
 # Determinant is 1
@@ -36,6 +38,17 @@ assert np.allclose(inv, transp)
 fig = plt.figure()
 ax = fig.add_subplot(111)
 x = [0, 1]
-y = [0,0 ]
+y = [0, 0]
 plt.scatter(x, y, s=100, marker='o')
-plt.show()
+#plt.show()
+
+
+# Test if modern-robotics library is installed properly
+
+se3mat = [[0.0, 0.0, 0.0, 0.0], [0, 0, -1.5708, 2.3562], [0, 1.5708, 0, 2.3562], [0, 0, 0, 0]]
+print(se3mat)
+
+T = modern_robotics.MatrixExp6(se3mat)
+print(T)
+
+#assert np.allclose(T, [[1, 0, 0, 0], [0, 0.0, -1, 0], [0, 1, 0, 3], [0, 0, 0, 9]])
