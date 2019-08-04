@@ -69,12 +69,14 @@ class GrueblerfFormulaTest(unittest.TestCase):
         self.assertEqual(1, gruebler3(N, f))
 
     def test_delta_robot(self):
+        """Test for the delta robot"""
         N = 17
         f = ("r", "r", "r", "s", "s", "s", "s") * 3
         f = [dof_of_joint(j) for j in f]
         self.assertEqual(15, gruebler3(N, f))
 
     def test_steward_gough_platform(self):
+        """Test for steward-gough platform"""
         N = 14
         f = ("u", "p", "s") * 6
         f = [dof_of_joint(j) for j in f]
