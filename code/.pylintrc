@@ -1,3 +1,7 @@
+[MASTER]
+
+ignore-patterns=scratch.py
+
 [MESSAGES CONTROL]
 
 disable=invalid-name,
