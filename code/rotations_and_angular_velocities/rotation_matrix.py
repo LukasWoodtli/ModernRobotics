@@ -14,7 +14,7 @@ def rot2(phi):
 
 def is_square(m):
     """
-    Check if a matix is square (N x N).
+    Check if a matrix is square (N x N).
     :param m: Matrix to check.
     :return: True if matrix is square, False otherwise.
     """
