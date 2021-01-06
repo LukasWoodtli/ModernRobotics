@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from rotations_and_angular_velocities.rotation_matrix import is_rotation_matrix
+from rotations_and_angular_velocities.rotation_matrix import is_rotation_matrix, rot2
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -30,3 +30,7 @@ def test_is_rotation_matrix(matrix):
 @pytest.mark.parametrize("matrix", TEST_DATA_NOT_OK)
 def test_is_not_rotation_matrix(matrix):
     assert not is_rotation_matrix(matrix)
+
+
+def test_rot2():
+    np.testing.assert_array_equal([[1, 0], [0, 1]], rot2(0))

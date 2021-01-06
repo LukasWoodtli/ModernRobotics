@@ -1,6 +1,9 @@
 """Test Grueblers formula."""
+import pytest
 
-from configuration_space.gruebler import gruebler, gruebler2, gruebler3, dof_of_joint
+from configuration_space.gruebler import (
+    gruebler, gruebler2, gruebler3, dof_of_joint,
+    UnknownJointTypeException)
 
 
 def test_four_bar_linkage():
@@ -17,12 +20,14 @@ def test_four_bar_linkage():
     dof = gruebler(m, N, f)
     assert dof == 1
 
+
 def test_slider_crank_mechanism_1():
     """Slider-crank mechanism, variant 1"""
     f = (1, ) * 4
     N = 4
     dof = gruebler2(N, f)
     assert dof == 1
+
 
 def test_slider_crank_mechanism_2():
     """Slider-crank mechanism, variant 2"""
@@ -31,13 +36,15 @@ def test_slider_crank_mechanism_2():
     dof = gruebler2(N, f)
     assert dof == 1
 
-def test_kR_robot():
+
+def test_kr_robot():
     """4-R robot."""
     f = ('r',) * 4
     f = [dof_of_joint(j) for j in f]
     N = 5
     dof = gruebler2(N, f)
     assert dof == 4
+
 
 def test_five_bar_linkage():
     """5-bar linkage."""
@@ -47,6 +54,7 @@ def test_five_bar_linkage():
     dof = gruebler2(N, f)
     assert dof == 2
 
+
 def test_stephenson_six_bar_linkage():
     """Test Stephensons mechnism."""
     f = ('r',) * 7
@@ -55,13 +63,15 @@ def test_stephenson_six_bar_linkage():
     dof = gruebler2(N, f)
     assert dof == 1
 
+
 def test_watt_six_bar_linkage():
-    """Test Watts mechnism."""
+    """Test Watts mechanism."""
     f = ('r',) * 7
     f = [dof_of_joint(j) for j in f]
     N = 6
     dof = gruebler2(N, f)
     assert dof == 1
+
 
 def test_other():
     """Other test."""
@@ -71,6 +81,7 @@ def test_other():
     dof = gruebler3(N, f)
     assert dof == 1
 
+
 def test_delta_robot():
     """Test for the delta robot"""
     N = 17
@@ -79,6 +90,7 @@ def test_delta_robot():
     dof = gruebler3(N, f)
     assert dof == 15
 
+
 def test_steward_gough_platform():
     """Test for steward-gough platform"""
     N = 14
@@ -86,3 +98,8 @@ def test_steward_gough_platform():
     f = [dof_of_joint(j) for j in f]
     dof = gruebler3(N, f)
     assert dof == 6
+
+
+def test_unknown_joint_type():
+    with pytest.raises(UnknownJointTypeException):
+        dof_of_joint("x")

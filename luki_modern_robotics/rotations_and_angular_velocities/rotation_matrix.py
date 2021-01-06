@@ -9,7 +9,7 @@ def rot2(phi):
     :param phi: Angle in radians.
     :return: The 2D rotation matrix (SO(2))
     """
-    return np.array([cos(phi), -sin(phi)], [sin(phi), cos(phi)])
+    return np.array([[cos(phi), -sin(phi)], [sin(phi), cos(phi)]])
 
 
 def is_rotation_matrix(mat: np.array):
@@ -21,7 +21,7 @@ def is_rotation_matrix(mat: np.array):
 
     is_square = _is_square(mat)
     if not is_square:
-        return
+        return False
 
     orthogonal_unit_vecs = _orthogonal_column_vectors(mat)
     right_handed = _is_right_handed_frame(mat)

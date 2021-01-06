@@ -3,6 +3,10 @@
 from builtins import RuntimeError
 
 
+class UnknownJointTypeException(RuntimeError):
+    pass
+
+
 def _gruebler(m, N, J, fs):
     """
     Calculate dof of a robot using Grueblers formula.
@@ -51,4 +55,4 @@ def dof_of_joint(joint_type):
         if joint_type.lower() in k[0]:
             return k[1]
 
-    raise RuntimeError(f"Can't find joint type: {joint_type}")
+    raise UnknownJointTypeException(f"Can't find joint type: {joint_type}")
