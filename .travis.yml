@@ -8,3 +8,4 @@ install:
 script:
   - cd $TRAVIS_BUILD_DIR/luki_modern_robotics && pylint **/*.py
   - cd $TRAVIS_BUILD_DIR/luki_modern_robotics/test && pytest
+  - cd $TRAVIS_BUILD_DIR/luki_modern_robotics/ && coverage run --omit="virtualenv/*" -m pytest && coverage report
