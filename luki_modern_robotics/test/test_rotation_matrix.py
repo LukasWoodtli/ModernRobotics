@@ -5,7 +5,7 @@ from rotations_and_angular_velocities.rotation_matrix import (
     is_rotation_matrix,
     rot2,
     rotation_matrix_inverse,
-    NotARotationMatrix, vector_to_so3, NotAVector)
+    NotARotationMatrix, vector_to_so3, NotAVector, so3_to_vector)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -98,3 +98,23 @@ def test_vector_to_so3_with_rotation_matrix(vector, matrix):
 
     np.testing.assert_array_equal(r_omega_r_transpose,
                                   so3_r_omega)
+
+
+def test_so3_to_vector():
+    so3 = np.array([[0, -3, 2],
+            [3, 0, -1],
+            [-2, 1, 0]])
+
+    vector = so3_to_vector(so3)
+
+    expected = [[1], [2], [3]]
+
+    np.testing.assert_array_equal(expected, vector)
+
+
+@pytest.mark.parametrize("vector", TEST_DATA_VECTORS)
+def test_vector_to_so3_and_back(vector):
+    so3 = vector_to_so3(vector)
+    vector_new = so3_to_vector(so3)
+
+    np.testing.assert_array_equal(vector, vector_new)

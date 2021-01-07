@@ -8,8 +8,14 @@ EXPECTED_VECTOR_DIMENSION = 3
 class NotARotationMatrix(Exception):
     pass
 
+
 class NotAVector(Exception):
     pass
+
+
+class NotAso3Matrix(Exception):
+    pass
+
 
 def rot2(phi):
     """
@@ -60,9 +66,19 @@ def vector_to_so3(vec):
         [-x2, x1, 0]
     ])
 
+    assert _is_skew_symmetric(skew_symmetric_matrix)
     return skew_symmetric_matrix
 
 
+def so3_to_vector(so3):
+    if not _is_skew_symmetric(so3):
+        raise NotAso3Matrix
+
+    vector = np.array([[so3[2][1]],
+                       [so3[0][2]],
+                       [so3[1][0]]])
+
+    return vector
 
 
 def _is_square(m):
@@ -92,3 +108,8 @@ def _orthogonal_column_vectors(mat):
     :return: True if column vector are orthogonal and have unit length
     """
     return np.isclose(mat.T @ mat, np.identity(mat.shape[0])).all()
+
+
+def _is_skew_symmetric(skew_symmetric_matrix):
+    negative_transpose = np.negative(skew_symmetric_matrix.T)
+    return (skew_symmetric_matrix == negative_transpose).all()
