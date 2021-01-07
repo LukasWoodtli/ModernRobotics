@@ -1,9 +1,9 @@
 """Grueblers formula. See MR p. 15f"""
 
-from builtins import RuntimeError
+from builtins import Exception
 
 
-class UnknownJointTypeException(RuntimeError):
+class UnknownJointTypeException(Exception):
     pass
 
 

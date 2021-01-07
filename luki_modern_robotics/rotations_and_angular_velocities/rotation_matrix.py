@@ -2,6 +2,9 @@
 from math import cos, sin
 import numpy as np
 
+class NotARotationMatrix(Exception):
+    pass
+
 
 def rot2(phi):
     """
@@ -27,6 +30,14 @@ def is_rotation_matrix(mat: np.array):
     right_handed = _is_right_handed_frame(mat)
 
     return orthogonal_unit_vecs and right_handed
+
+
+def rotation_matrix_inverse(rotation_matrix):
+    if not is_rotation_matrix(rotation_matrix):
+        raise NotARotationMatrix
+
+    return rotation_matrix.T
+
 
 
 def _is_square(m):
