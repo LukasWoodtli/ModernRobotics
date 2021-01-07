@@ -2,9 +2,14 @@
 from math import cos, sin
 import numpy as np
 
+EXPECTED_VECTOR_DIMENSION = 3
+
+
 class NotARotationMatrix(Exception):
     pass
 
+class NotAVector(Exception):
+    pass
 
 def rot2(phi):
     """
@@ -37,6 +42,26 @@ def rotation_matrix_inverse(rotation_matrix):
         raise NotARotationMatrix
 
     return rotation_matrix.T
+
+
+def vector_to_so3(vec):
+    shape = vec.shape[0]
+    if shape is not EXPECTED_VECTOR_DIMENSION:
+        raise NotAVector
+
+    x1, x2, x3 = vec
+    x1 = x1[0]
+    x2 = x2[0]
+    x3 = x3[0]
+
+    skew_symmetric_matrix = np.array([
+        [0, -x3, x2],
+        [x3, 0, -x1],
+        [-x2, x1, 0]
+    ])
+
+    return skew_symmetric_matrix
+
 
 
 
