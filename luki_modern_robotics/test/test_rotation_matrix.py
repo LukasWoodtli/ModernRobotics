@@ -1,8 +1,11 @@
 import numpy as np
 import pytest
 
-from rotations_and_angular_velocities.rotation_matrix import is_rotation_matrix, rot2, rotation_matrix_inverse, \
-    NotARotationMatrix
+from rotations_and_angular_velocities.rotation_matrix import (
+    is_rotation_matrix,
+    rot2,
+    rotation_matrix_inverse,
+    NotARotationMatrix)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -49,6 +52,6 @@ def test_rotation_matrix_inverse(rotation_matrix):
 
 
 @pytest.mark.parametrize("rotation_matrix", TEST_DATA_NOT_OK)
-def test_rotation_matrix_inverse(rotation_matrix):
+def test_rotation_matrix_inverse_raises(rotation_matrix):
     with pytest.raises(NotARotationMatrix):
         rotation_matrix_inverse(rotation_matrix)
