@@ -5,7 +5,7 @@ from rotations_and_angular_velocities.rotation_matrix import (
     is_rotation_matrix,
     rot2,
     rotation_matrix_inverse,
-    NotARotationMatrix, vector_to_so3, NotAVector, so3_to_vector)
+    NotARotationMatrix, vector_to_so3, NotAVector, so3_to_vector, axis_ang_3)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -71,7 +71,7 @@ def test_vector_to_so3_raises():
         vector_to_so3(np.array([1]))
 
 
-TEST_DATA_VECTORS =[
+TEST_DATA_VECTORS = [
     np.array([[1], [2], [3]]),
     np.array([[2], [2], [3]]),
     np.array([[0.2], [1.4], [3.8]])
@@ -90,7 +90,7 @@ def test_vector_to_so3_negative_transpose(vector):
 @pytest.mark.parametrize("matrix", TEST_DATA_OK)
 def test_vector_to_so3_with_rotation_matrix(vector, matrix):
     # R [ω]R^T = [Rω]
-    r_omega_r_transpose =\
+    r_omega_r_transpose = \
         np.dot(matrix, np.dot(vector_to_so3(vector), matrix.T))
 
     r_omega = np.dot(matrix, vector)
@@ -102,8 +102,8 @@ def test_vector_to_so3_with_rotation_matrix(vector, matrix):
 
 def test_so3_to_vector():
     so3 = np.array([[0, -3, 2],
-            [3, 0, -1],
-            [-2, 1, 0]])
+                    [3, 0, -1],
+                    [-2, 1, 0]])
 
     vector = so3_to_vector(so3)
 
@@ -118,3 +118,12 @@ def test_vector_to_so3_and_back(vector):
     vector_new = so3_to_vector(so3)
 
     np.testing.assert_array_equal(vector, vector_new)
+
+
+def test_axis_ang_3():
+    omega_hat_theta = np.array([[1], [1], [1]])
+    omega_hat, theta = axis_ang_3(omega_hat_theta)
+
+    assert np.math.sqrt(3) == theta
+    entry = np.math.sqrt(1 / 3)
+    np.testing.assert_array_almost_equal([[entry], [entry], [entry]], omega_hat)

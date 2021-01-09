@@ -81,6 +81,19 @@ def so3_to_vector(so3):
     return vector
 
 
+def axis_ang_3(expc3):
+    """
+    Extracts the rotation axis omega_hat and the rotation amount theta
+    from the 3-vector omega_hat theta of exponential coordinates for rotation, `expc3`
+    """
+    shape = expc3   .shape[0]
+    if shape is not EXPECTED_VECTOR_DIMENSION:
+        raise NotAVector
+
+    theta = np.linalg.norm(expc3)
+    omega_hat = expc3 / theta
+    return omega_hat, theta
+
 def _is_square(m):
     """
     Check if a matrix is square (N x N).
