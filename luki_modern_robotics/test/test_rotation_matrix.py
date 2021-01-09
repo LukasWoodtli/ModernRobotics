@@ -5,7 +5,7 @@ from rotations_and_angular_velocities.rotation_matrix import (
     is_rotation_matrix,
     rot2,
     RotInv,
-    NotARotationMatrix, VecToso3, NotAVector, so3ToVec, AxisAng3)
+    NotARotationMatrix, VecToso3, NotAVector, so3ToVec, AxisAng3, MatrixExp3)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -127,3 +127,28 @@ def test_axis_ang_3():
     assert np.math.sqrt(3) == theta
     entry = np.math.sqrt(1 / 3)
     np.testing.assert_array_almost_equal([[entry], [entry], [entry]], omega_hat)
+
+
+def test_axis_ang_3_from_mr_code():
+    expc3 = np.array([1, 2, 3])
+    omega_hat, theta = AxisAng3(expc3)
+
+    expected_omega_hat = np.array([0.26726124, 0.53452248, 0.80178373])
+    expected_theta = 3.7416573867739413
+
+    np.testing.assert_array_almost_equal(expected_omega_hat, omega_hat)
+    np.testing.assert_array_almost_equal(expected_theta, theta)
+
+
+def test_MatrixExp3():
+    so3mat = np.array([[ 0, -3,  2],
+                           [ 3,  0, -1],
+                           [-2,  1,  0]])
+
+    expected = np.array([[-0.69492056,  0.71352099,  0.08929286],
+                  [-0.19200697, -0.30378504,  0.93319235],
+                  [0.69297817,  0.6313497,  0.34810748]])
+
+    matrix_exp = MatrixExp3(so3mat)
+
+    np.testing.assert_array_almost_equal(expected, matrix_exp)
