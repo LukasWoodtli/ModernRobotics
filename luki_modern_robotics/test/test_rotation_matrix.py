@@ -4,8 +4,8 @@ import pytest
 from rotations_and_angular_velocities.rotation_matrix import (
     is_rotation_matrix,
     rot2,
-    rotation_matrix_inverse,
-    NotARotationMatrix, vector_to_so3, NotAVector, so3_to_vector, axis_ang_3)
+    RotInv,
+    NotARotationMatrix, VecToso3, NotAVector, so3ToVec, AxisAng3)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -45,7 +45,7 @@ def test_rotation_matrix_inverse(rotation_matrix):
     expected_inverse = np.linalg.inv(rotation_matrix)
     expected_transpose = rotation_matrix.T
 
-    inverse = rotation_matrix_inverse(rotation_matrix)
+    inverse = RotInv(rotation_matrix)
 
     np.testing.assert_array_equal(expected_inverse, inverse)
     np.testing.assert_array_equal(expected_transpose, inverse)
@@ -54,11 +54,11 @@ def test_rotation_matrix_inverse(rotation_matrix):
 @pytest.mark.parametrize("rotation_matrix", TEST_DATA_NOT_OK)
 def test_rotation_matrix_inverse_raises(rotation_matrix):
     with pytest.raises(NotARotationMatrix):
-        rotation_matrix_inverse(rotation_matrix)
+        RotInv(rotation_matrix)
 
 
 def test_vector_to_so3():
-    so3 = vector_to_so3(np.array([[1], [2], [3]]))
+    so3 = VecToso3(np.array([[1], [2], [3]]))
     expected = [[0, -3, 2],
                 [3, 0, -1],
                 [-2, 1, 0]]
@@ -68,7 +68,7 @@ def test_vector_to_so3():
 
 def test_vector_to_so3_raises():
     with pytest.raises(NotAVector):
-        vector_to_so3(np.array([1]))
+        VecToso3(np.array([1]))
 
 
 TEST_DATA_VECTORS = [
@@ -80,7 +80,7 @@ TEST_DATA_VECTORS = [
 
 @pytest.mark.parametrize("vector", TEST_DATA_VECTORS)
 def test_vector_to_so3_negative_transpose(vector):
-    so3 = vector_to_so3(vector)
+    so3 = VecToso3(vector)
     expected = np.negative(so3.T)
 
     np.testing.assert_array_equal(expected, so3)
@@ -91,10 +91,10 @@ def test_vector_to_so3_negative_transpose(vector):
 def test_vector_to_so3_with_rotation_matrix(vector, matrix):
     # R [ω]R^T = [Rω]
     r_omega_r_transpose = \
-        np.dot(matrix, np.dot(vector_to_so3(vector), matrix.T))
+        np.dot(matrix, np.dot(VecToso3(vector), matrix.T))
 
     r_omega = np.dot(matrix, vector)
-    so3_r_omega = vector_to_so3(r_omega)
+    so3_r_omega = VecToso3(r_omega)
 
     np.testing.assert_array_equal(r_omega_r_transpose,
                                   so3_r_omega)
@@ -105,7 +105,7 @@ def test_so3_to_vector():
                     [3, 0, -1],
                     [-2, 1, 0]])
 
-    vector = so3_to_vector(so3)
+    vector = so3ToVec(so3)
 
     expected = [[1], [2], [3]]
 
@@ -114,15 +114,15 @@ def test_so3_to_vector():
 
 @pytest.mark.parametrize("vector", TEST_DATA_VECTORS)
 def test_vector_to_so3_and_back(vector):
-    so3 = vector_to_so3(vector)
-    vector_new = so3_to_vector(so3)
+    so3 = VecToso3(vector)
+    vector_new = so3ToVec(so3)
 
     np.testing.assert_array_equal(vector, vector_new)
 
 
 def test_axis_ang_3():
     omega_hat_theta = np.array([[1], [1], [1]])
-    omega_hat, theta = axis_ang_3(omega_hat_theta)
+    omega_hat, theta = AxisAng3(omega_hat_theta)
 
     assert np.math.sqrt(3) == theta
     entry = np.math.sqrt(1 / 3)

@@ -43,14 +43,15 @@ def is_rotation_matrix(mat: np.array):
     return orthogonal_unit_vecs and right_handed
 
 
-def rotation_matrix_inverse(rotation_matrix):
+def RotInv(rotation_matrix):
+    """Returns the inverse of an rotation matrix."""
     if not is_rotation_matrix(rotation_matrix):
         raise NotARotationMatrix
 
     return rotation_matrix.T
 
 
-def vector_to_so3(vec):
+def VecToso3(vec):
     shape = vec.shape[0]
     if shape is not EXPECTED_VECTOR_DIMENSION:
         raise NotAVector
@@ -70,7 +71,7 @@ def vector_to_so3(vec):
     return skew_symmetric_matrix
 
 
-def so3_to_vector(so3):
+def so3ToVec(so3):
     if not _is_skew_symmetric(so3):
         raise NotAso3Matrix
 
@@ -81,7 +82,7 @@ def so3_to_vector(so3):
     return vector
 
 
-def axis_ang_3(expc3):
+def AxisAng3(expc3):
     """
     Extracts the rotation axis omega_hat and the rotation amount theta
     from the 3-vector omega_hat theta of exponential coordinates for rotation, `expc3`
@@ -93,6 +94,7 @@ def axis_ang_3(expc3):
     theta = np.linalg.norm(expc3)
     omega_hat = expc3 / theta
     return omega_hat, theta
+
 
 def _is_square(m):
     """
