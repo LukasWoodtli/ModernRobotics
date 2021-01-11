@@ -108,15 +108,38 @@ def MatrixExp3(so3mat):
 
     omega_theta = so3ToVec(so3mat)
     omega_hat, theta = AxisAng3(omega_theta)
-    # [[ 0.         -0.80178373  0.53452248],
-    #  [ 0.80178373  0.         -0.26726124],
-    #  [-0.53452248  0.26726124  0.        ]]
+
     omega_hat_so3 = VecToso3(omega_hat)
     R = np.eye(3) + np.sin(theta) * omega_hat_so3 +\
         (1 - np.cos(theta)) * np.dot(omega_hat_so3, omega_hat_so3)
 
     return R
 
+
+def MatrixLog3(R):
+    if not is_rotation_matrix(R):
+        raise NotARotationMatrix
+
+    if np.isclose(R,
+                  np.array([[1, 0, 0],
+                            [0, 1, 0],
+                            [0, 0, 1]])).all():
+        so3mat = np.zeros([3, 3])
+    elif np.isclose(np.trace(R), -1.0):
+        theta = np.pi
+
+        # Other cases should be handled here (see original MR library)
+        omega_hat = (1.0 / np.sqrt(2 * (1 + R[2][2]))) \
+            * np.array([R[0][2], R[1][2], 1 + R[2][2]])
+
+        so3mat = VecToso3(theta * omega_hat)
+    else:
+        theta = np.arccos((np.trace(R) -1) / 2.0)
+        omega_hat_so3 = 1.0 / (2 * np.sin(theta)) * (R - R.T)
+        so3mat = theta * omega_hat_so3
+        assert _is_skew_symmetric(so3mat)
+
+    return so3mat
 
 def _is_square(m):
     """

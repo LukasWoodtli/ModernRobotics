@@ -5,7 +5,7 @@ from rotations_and_angular_velocities.rotation_matrix import (
     is_rotation_matrix,
     rot2,
     RotInv,
-    NotARotationMatrix, VecToso3, NotAVector, so3ToVec, AxisAng3, MatrixExp3)
+    NotARotationMatrix, VecToso3, NotAVector, so3ToVec, AxisAng3, MatrixExp3, MatrixLog3)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -152,3 +152,29 @@ def test_MatrixExp3():
     matrix_exp = MatrixExp3(so3mat)
 
     np.testing.assert_array_almost_equal(expected, matrix_exp)
+
+
+def test_MatrixLog3():
+    R = np.array([[0, 0, 1],
+                      [1, 0, 0],
+                      [0, 1, 0]])
+    expected = np.array([[          0, -1.20919958,  1.20919958],
+                  [ 1.20919958,           0, -1.20919958],
+                  [-1.20919958,  1.20919958,           0]])
+
+    so3mat = MatrixLog3(R)
+
+    np.testing.assert_array_almost_equal(expected, so3mat)
+
+
+def test_MatrixLog3_identity():
+    R = np.array([[1, 0, 0],
+                  [0, 1, 0],
+                  [0, 0, 1]])
+    np.testing.assert_array_equal(R, np.diag(np.full(3, 1)))
+
+    expected = np.zeros([3, 3])
+
+    so3mat = MatrixLog3(R)
+
+    np.testing.assert_array_almost_equal(expected, so3mat)
