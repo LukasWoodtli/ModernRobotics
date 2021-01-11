@@ -2,10 +2,10 @@ import numpy as np
 import pytest
 
 from rotations_and_angular_velocities.rotation_matrix import (
-    is_rotation_matrix,
-    rot2,
-    RotInv,
-    NotARotationMatrix, VecToso3, NotAVector, so3ToVec, AxisAng3, MatrixExp3, MatrixLog3)
+    is_rotation_matrix, rot2, RotInv,
+    NotARotationMatrix, VecToso3,
+    NotAVector, so3ToVec, AxisAng3,
+    MatrixExp3, MatrixLog3, RpToTrans, TransToRp, TransInv)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -178,3 +178,52 @@ def test_MatrixLog3_identity():
     so3mat = MatrixLog3(R)
 
     np.testing.assert_array_almost_equal(expected, so3mat)
+
+
+def test_RpToTrans():
+    R = np.array([[1, 0,  0],
+                  [0, 0, -1],
+                  [0, 1,  0]])
+    p = np.array([1, 2, 5])
+
+    expected = np.array([[1, 0,  0, 1],
+              [0, 0, -1, 2],
+              [0, 1,  0, 5],
+              [0, 0,  0, 1]])
+
+    trans = RpToTrans(R, p)
+
+    np.testing.assert_array_equal(expected, trans)
+
+
+def test_TransToRp():
+    T = np.array([[1, 0,  0, 1],
+              [0, 0, -1, 2],
+              [0, 1,  0, 5],
+              [0, 0,  0, 1]])
+
+    expected_R = np.array([[1, 0,  0],
+                  [0, 0, -1],
+                  [0, 1,  0]])
+    expected_p = np.array([1, 2, 5])
+
+    R, p = TransToRp(T)
+
+    np.testing.assert_array_equal(expected_R, R)
+    np.testing.assert_array_equal(expected_p, p)
+
+
+def test_TransInv():
+    T = np.array([[1, 0,  0, 0],
+                  [0, 0, -1, 0],
+                  [0, 1,  0, 3],
+                  [0, 0,  0, 1]])
+
+    expected = np.array([[1,  0, 0,  0],
+                  [0,  0, 1, -3],
+                  [0, -1, 0,  0],
+                  [0,  0, 0,  1]])
+
+    T_inv = TransInv(T)
+
+    np.testing.assert_array_equal(expected, T_inv)

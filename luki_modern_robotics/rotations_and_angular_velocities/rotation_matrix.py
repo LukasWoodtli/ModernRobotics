@@ -141,6 +141,24 @@ def MatrixLog3(R):
 
     return so3mat
 
+
+def RpToTrans(R, p):
+    return np.r_[np.c_[R, p], [[0, 0, 0, 1]]]
+
+
+def TransToRp(T):
+    R = T[0:3, 0:3]
+    p = T[0:3, 3]
+    return R, p
+
+
+def TransInv(T):
+    R, p = TransToRp(T)
+    R_T = RotInv(R)
+    first_row = np.c_[R_T, -np.dot(R_T, p)]
+    return np.r_[first_row, [[0, 0, 0, 1]]]
+
+
 def _is_square(m):
     """
     Check if a matrix is square (N x N).
