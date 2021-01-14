@@ -57,9 +57,9 @@ def VecToso3(vec):
         raise NotAVector
 
     x1, x2, x3 = vec
-    x1 = x1[0]
-    x2 = x2[0]
-    x3 = x3[0]
+    # x1 = x1[0]
+    # x2 = x2[0]
+    # x3 = x3[0]
 
     skew_symmetric_matrix = np.array([
         [0, -x3, x2],
@@ -75,9 +75,9 @@ def so3ToVec(so3):
     if not _is_skew_symmetric(so3):
         raise NotAso3Matrix
 
-    vector = np.array([[so3[2][1]],
-                       [so3[0][2]],
-                       [so3[1][0]]])
+    vector = np.array([so3[2][1],
+                       so3[0][2],
+                       so3[1][0]])
 
     return vector
 
@@ -157,6 +157,34 @@ def TransInv(T):
     R_T = RotInv(R)
     first_row = np.c_[R_T, -np.dot(R_T, p)]
     return np.r_[first_row, [[0, 0, 0, 1]]]
+
+
+def VecTose3(V):
+
+    return np.r_[
+        np.c_[VecToso3(np.array([[V[0]], [V[1]], [V[2]]])),
+              [V[3], V[4], V[5]]],
+        np.zeros((1, 4))]
+
+
+def se3ToVec(se3):
+    so3 = np.array([i[:3] for i in se3[:3]])
+    omega_vec = so3ToVec(so3)
+    v_vec = [i[3] for i in se3[:3]]
+    return [*omega_vec, *v_vec]
+
+
+def Adjoint(T):
+    R, p = TransToRp(T)
+    p_so3 = VecToso3(p)
+    p_so3_R = np.dot(p_so3, R)
+
+    adj = np.r_[
+        np.c_[R, np.zeros((3, 3))],
+        np.c_[p_so3_R, R]]
+
+    return adj
+
 
 
 def _is_square(m):

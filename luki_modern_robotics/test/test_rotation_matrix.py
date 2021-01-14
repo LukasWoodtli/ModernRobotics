@@ -5,7 +5,7 @@ from rotations_and_angular_velocities.rotation_matrix import (
     is_rotation_matrix, rot2, RotInv,
     NotARotationMatrix, VecToso3,
     NotAVector, so3ToVec, AxisAng3,
-    MatrixExp3, MatrixLog3, RpToTrans, TransToRp, TransInv)
+    MatrixExp3, MatrixLog3, RpToTrans, TransToRp, TransInv, VecTose3, se3ToVec, Adjoint)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -72,9 +72,9 @@ def test_vector_to_so3_raises():
 
 
 TEST_DATA_VECTORS = [
-    np.array([[1], [2], [3]]),
-    np.array([[2], [2], [3]]),
-    np.array([[0.2], [1.4], [3.8]])
+    np.array([1, 2, 3]),
+    np.array([2, 2, 3]),
+    np.array([0.2, 1.4, 3.8])
 ]
 
 
@@ -107,7 +107,7 @@ def test_so3_to_vector():
 
     vector = so3ToVec(so3)
 
-    expected = [[1], [2], [3]]
+    expected = [1, 2, 3]
 
     np.testing.assert_array_equal(expected, vector)
 
@@ -227,3 +227,46 @@ def test_TransInv():
     T_inv = TransInv(T)
 
     np.testing.assert_array_equal(expected, T_inv)
+
+
+def test_VecTose3():
+    V = np.array([1, 2, 3, 4, 5, 6])
+    expected = np.array([[ 0, -3,  2, 4],
+                  [ 3,  0, -1, 5],
+                  [-2,  1,  0, 6],
+                  [ 0,  0,  0, 0]])
+
+    se3 = VecTose3(V)
+
+    np.testing.assert_array_equal(expected, se3)
+
+
+def test_se3ToVec():
+    V = np.array([[0, -3, 2, 4],
+                  [3, 0, -1, 5],
+                  [-2, 1, 0, 6],
+                  [0, 0, 0, 0]])
+    expected = np.array([1, 2, 3, 4, 5, 6])
+
+    vec = se3ToVec(V)
+
+    np.testing.assert_array_equal(expected, vec)
+
+
+def test_Adjoint():
+    T = np.array([[1, 0,  0, 0],
+                  [0, 0, -1, 0],
+                  [0, 1,  0, 3],
+                  [0, 0,  0, 1]])
+
+    expected = np.array([[1, 0,  0, 0, 0,  0],
+                  [0, 0, -1, 0, 0,  0],
+                  [0, 1,  0, 0, 0,  0],
+                  [0, 0,  3, 1, 0,  0],
+                  [3, 0,  0, 0, 0, -1],
+                  [0, 0,  0, 0, 1,  0]])
+
+    adj = Adjoint(T)
+
+    np.testing.assert_array_equal(expected, adj)
+    
