@@ -7,7 +7,7 @@ from rotations_and_angular_velocities.rotation_matrix import (
     NotAVector, so3ToVec, AxisAng3,
     MatrixExp3, MatrixLog3, RpToTrans,
     TransToRp, TransInv, VecTose3, se3ToVec,
-    Adjoint, ScrewToAxis)
+    Adjoint, ScrewToAxis, AxisAng6)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -282,3 +282,13 @@ def test_ScrewToAxis():
     expected = np.array([0, 0, 1, 0, -3, 2])
     np.testing.assert_array_equal(expected, S)
 
+def test_AxisAng6():
+    expc6 = np.array([1, 0, 0, 1, 2, 3])
+
+    S, theta = AxisAng6(expc6)
+
+    expected_S = np.array([1.0, 0.0, 0.0, 1.0, 2.0, 3.0])
+    expected_theta = 1.0
+
+    np.testing.assert_array_equal(expected_S, S)
+    assert expected_theta == theta

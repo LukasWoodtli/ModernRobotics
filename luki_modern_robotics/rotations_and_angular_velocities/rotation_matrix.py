@@ -204,6 +204,18 @@ def ScrewToAxis(q, s, h):
     return np.r_[s,
                  np.cross(-s, q) + np.dot(h, s)]
 
+def AxisAng6(expc6):
+    """
+    Extracts normalized screw axis S and distance traveled along the screw (theta)
+    :param expc6: 6-vector of exponential coordinates for rigid-body motion S*tetha
+    :return: S and theta
+    """
+    theta = np.linalg.norm([expc6[0], expc6[1], expc6[2]])
+    if np.isclose(theta, 0):
+        theta = np.linalg.norm([expc6[3], expc6[4], expc6[5]])
+    return np.array(expc6 / theta), theta
+
+
 def _is_square(m):
     """
     Check if a matrix is square (N x N).
