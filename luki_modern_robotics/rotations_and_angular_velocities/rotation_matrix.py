@@ -13,6 +13,10 @@ class NotAVector(Exception):
     pass
 
 
+class NotAUnitVector(Exception):
+    pass
+
+
 class NotAso3Matrix(Exception):
     pass
 
@@ -186,6 +190,19 @@ def Adjoint(T):
     return adj
 
 
+def ScrewToAxis(q, s, h):
+    """
+    Returns normalized screw axis S
+    :param q: location of direction vector s
+    :param s: unit vector in direction of screw S
+    :param h: pitch of the screw
+    :return: normalized screw axis
+    """
+    if not _is_unit_vector(s):
+        raise NotAUnitVector()
+
+    return np.r_[s,
+                 np.cross(-s, q) + np.dot(h, s)]
 
 def _is_square(m):
     """
@@ -219,3 +236,8 @@ def _orthogonal_column_vectors(mat):
 def _is_skew_symmetric(skew_symmetric_matrix):
     negative_transpose = np.negative(skew_symmetric_matrix.T)
     return (skew_symmetric_matrix == negative_transpose).all()
+
+
+def _is_unit_vector(v):
+    return np.isclose(1, np.linalg.norm(v))
+

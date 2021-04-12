@@ -5,7 +5,9 @@ from rotations_and_angular_velocities.rotation_matrix import (
     is_rotation_matrix, rot2, RotInv,
     NotARotationMatrix, VecToso3,
     NotAVector, so3ToVec, AxisAng3,
-    MatrixExp3, MatrixLog3, RpToTrans, TransToRp, TransInv, VecTose3, se3ToVec, Adjoint)
+    MatrixExp3, MatrixLog3, RpToTrans,
+    TransToRp, TransInv, VecTose3, se3ToVec,
+    Adjoint, ScrewToAxis)
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -269,4 +271,14 @@ def test_Adjoint():
     adj = Adjoint(T)
 
     np.testing.assert_array_equal(expected, adj)
-    
+
+
+def test_ScrewToAxis():
+    q = np.array([3, 0, 0])
+    s = np.array([0, 0, 1])
+    h = 2
+    S = ScrewToAxis(q, s, h)
+
+    expected = np.array([0, 0, 1, 0, -3, 2])
+    np.testing.assert_array_equal(expected, S)
+
