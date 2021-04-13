@@ -252,4 +252,3 @@ def _is_skew_symmetric(skew_symmetric_matrix):
 
 def _is_unit_vector(v):
     return np.isclose(1, np.linalg.norm(v))
-
