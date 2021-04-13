@@ -69,7 +69,7 @@ def VecToso3(vec):
         [0, -x3, x2],
         [x3, 0, -x1],
         [-x2, x1, 0]
-    ])
+    ], dtype=object)
 
     assert _is_skew_symmetric(skew_symmetric_matrix)
     return skew_symmetric_matrix
