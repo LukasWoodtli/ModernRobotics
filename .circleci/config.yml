@@ -1,0 +1,27 @@
+version: 2.0
+
+orbs:
+  python: cimg/python@3.9
+jobs:
+  build:
+    docker:
+      - image: cimg/python:3.9.7
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run: pip install -r requirements.txt
+      - run:
+          name: Run tests
+          working_directory: luki_modern_robotics/test
+          command: pytest
+      - run:
+          name: Run pylint
+          working_directory: luki_modern_robotics
+          command: pylint **/*.py
+      - run:
+          name: Collect test coverage
+          working_directory: luki_modern_robotics
+          command: |
+            coverage run --omit="*/virtualenv/*" -m pytest
+            coverage report
+
