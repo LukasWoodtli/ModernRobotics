@@ -3,4 +3,4 @@ Code and examples from the [Modern Robotics](http://hades.mech.northwestern.edu/
 
 ## Build
 
-[![Build Status](https://travis-ci.org/LukasWoodtli/ModernRobotics.svg?branch=master)](https://travis-ci.org/LukasWoodtli/ModernRobotics)
+[![CircleCI](https://circleci.com/gh/LukasWoodtli/ModernRobotics.svg?style=shield)](https://app.circleci.com/pipelines/github/LukasWoodtli/ModernRobotics)
