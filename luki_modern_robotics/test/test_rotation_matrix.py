@@ -8,16 +8,17 @@ from rotations_and_angular_velocities.rotation_matrix import (
     MatrixExp3, MatrixLog3, RpToTrans,
     TransToRp, TransInv, VecTose3, se3ToVec,
     Adjoint, ScrewToAxis, AxisAng6,
-    MatrixExp3, MatrixExp6, MatrixLog3)
+    MatrixExp6, _is_skew_symmetric)
 
 from rotations_and_angular_velocities.rotation_matrix import rodrigues_formula
 
-from luki_modern_robotics.rotations_and_angular_velocities.rotation_matrix import _is_skew_symmetric
 
 TEST_DATA_OK = [
     np.identity(3),
     np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]]),
-    np.array([[0, -1, 0], [0, 0, -1], [1, 0, 0]])
+    np.array([[0, -1, 0], [0, 0, -1], [1, 0, 0]]),
+    np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]),
+    np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
 ]
 
 TEST_DATA_NOT_OK = [
@@ -328,3 +329,90 @@ def test_MatrixExp6():
 
     np.testing.assert_array_almost_equal(expected_T, T)
 
+
+def test_various_2():
+    R_sb = np.array([[1, 0, 0],
+                     [0, 0, 1],
+                     [0, -1, 0]])
+    assert is_rotation_matrix(R_sb)
+    R_sb_inv = np.linalg.inv(R_sb)
+    assert is_rotation_matrix(R_sb_inv)
+    R_sb_inv_expected = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
+    np.testing.assert_array_equal(R_sb_inv_expected, R_sb_inv)
+
+
+def test_various_3():
+    R_as = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]).T
+    R_sb = np.array([[1, 0, 0],
+                     [0, 0, 1],
+                     [0, -1, 0]])
+    assert is_rotation_matrix(R_as)
+    R_ab = R_as @ R_sb
+    assert is_rotation_matrix(R_ab)
+    np.testing.assert_array_equal(R_ab, np.array([[0, -1, 0],
+                                         [1, 0, 0],
+                                         [0, 0, 1]]))
+
+def test_various_5():
+    R_sb = np.array([[1, 0, 0],
+                     [0, 0, 1],
+                     [0, -1, 0]])
+    p_b = np.array([1, 2, 3]).T
+    p_s = R_sb @ p_b
+    np.testing.assert_array_equal(p_s, np.array([1, 3, -2]))
+
+
+def test_various_7():
+    R_as = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]).T
+    omega_s = np.array([3, 2, 1]).T
+    omega_a = R_as @ omega_s
+    np.testing.assert_array_equal(omega_a, np.array([1, 3, 2]))
+
+
+def test_various_8():
+    R_sa = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
+    res = MatrixLog3(R_sa)
+    np.testing.assert_array_almost_equal(res, np.array(
+         [[0., 1.2092, -1.2092],
+          [-1.2092,  0.,  1.2092],
+          [1.2092, -1.2092,  0.]]))
+    _omghat, theta = AxisAng3(res)
+    assert theta == 2.961921958772245
+
+
+def test_various_9():
+    omega_hat_theta = np.array([1, 2, 0]).T
+    omega_hat_theta = VecToso3(omega_hat_theta)
+    res = MatrixExp3(omega_hat_theta)
+    np.testing.assert_array_almost_equal(res, np.array(
+        [[-0.29381830116573315, 0.6469091505828666, 0.7036898157513979],
+         [0.6469091505828666, 0.6765454247085667, -0.35184490787569894],
+         [-0.7036898157513979, 0.35184490787569894, -0.6172728764571664]]))
+
+
+def test_various_10():
+    omega = np.array([1, 2, 0.5]).T
+    res = VecToso3(omega)
+    np.testing.assert_array_equal(res, np.array(
+        [[0., -0.5, 2.],
+         [0.5, 0., -1.],
+         [-2., 1., 0.]]))
+
+
+def test_various_11():
+    omega_hat_theta = np.array([[0, 0.5, -1], [-0.5, 0, 2], [1, -2, 0]])
+    assert _is_skew_symmetric(omega_hat_theta)
+    res = MatrixExp3(omega_hat_theta)
+    np.testing.assert_array_almost_equal(res, np.array(
+        [[0.6048204475307473, 0.7962739995355433, -0.011829789194075735],
+         [0.4683005683660654, -0.3436104783954592, 0.8140186833266569],
+         [0.6441170731448801, -0.4978750413512547, -0.5807182098770107]]))
+
+
+def test_various_12():
+    R = np.array([[0, 0, 1], [-1, 0, 0], [0, -1, 0]])
+    omega_hat_theta = MatrixLog3(R)
+    np.testing.assert_array_almost_equal(omega_hat_theta, np.array(
+        [[0., 1.2092, 1.2092],
+         [-1.2092, 0., 1.2092],
+         [-1.2092, -1.2092, 0.]]))

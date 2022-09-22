@@ -5,7 +5,8 @@ ignore-patterns=scratch.py
 [MESSAGES CONTROL]
 
 disable=invalid-name,
-    missing-docstring
+    missing-docstring,
+
 
 
 [LOGGING]
