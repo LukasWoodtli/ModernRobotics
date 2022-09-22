@@ -44,7 +44,13 @@ def is_rotation_matrix(mat: np.array):
     orthogonal_unit_vecs = _orthogonal_column_vectors(mat)
     right_handed = _is_right_handed_frame(mat)
 
-    return orthogonal_unit_vecs and right_handed
+    is_rot = orthogonal_unit_vecs and right_handed
+
+    if is_rot:
+        # determinant of a rotation matrix is 1
+        assert np.linalg.det(mat)
+
+    return is_rot
 
 
 def RotInv(rotation_matrix):
@@ -113,10 +119,13 @@ def MatrixExp3(so3mat):
     omega_theta = so3ToVec(so3mat)
     omega_hat, theta = AxisAng3(omega_theta)
 
-    omega_hat_so3 = VecToso3(omega_hat)
-    R = np.eye(3) + np.sin(theta) * omega_hat_so3 +\
-        (1 - np.cos(theta)) * np.dot(omega_hat_so3, omega_hat_so3)
+    return rodrigues_formula(omega_hat, theta)
 
+
+def rodrigues_formula(omega_hat, theta):
+    omega_hat_so3 = VecToso3(omega_hat)
+    R = np.eye(3) + np.sin(theta) * omega_hat_so3 + \
+        (1 - np.cos(theta)) * np.dot(omega_hat_so3, omega_hat_so3)
     return R
 
 
@@ -214,6 +223,34 @@ def AxisAng6(expc6):
     if np.isclose(theta, 0):
         theta = np.linalg.norm([expc6[3], expc6[4], expc6[5]])
     return np.array(expc6 / theta), theta
+
+
+def MatrixExp6(se3mat):
+    """
+    Computes homogeneous transformation matrix T corresponding to matrix exponential of se3mat
+    :param se3mat: in se(3)
+    :return: T in SE(3)
+    """
+    se3mat = np.array(se3mat)
+    R = se3mat[0:3, 0:3]
+    omegatheta = so3ToVec(R)
+    vtheta = se3mat[0: 3, 3]
+    if np.isclose(np.linalg.norm(omegatheta), 0):
+        return np.r_[np.c_[np.eye(3), vtheta], [[0, 0, 0, 1]]]
+    else:
+        _omega_hat, theta = AxisAng3(omegatheta)
+        omgmat = R / theta
+        assert _is_skew_symmetric(omgmat)
+        e_omg_theta = MatrixExp3(R)
+        return np.r_[np.c_[e_omg_theta,
+                           np.dot(
+                               np.eye(3) * theta + \
+                               (1 - np.cos(theta)) * omgmat + \
+                               (theta - np.sin(theta)) * \
+                                np.dot(omgmat, omgmat),
+                                vtheta) / theta],
+                            [[0, 0, 0, 1]]]
+
 
 
 def _is_square(m):

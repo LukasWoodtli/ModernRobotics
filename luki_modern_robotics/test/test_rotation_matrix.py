@@ -7,7 +7,12 @@ from rotations_and_angular_velocities.rotation_matrix import (
     NotAVector, so3ToVec, AxisAng3,
     MatrixExp3, MatrixLog3, RpToTrans,
     TransToRp, TransInv, VecTose3, se3ToVec,
-    Adjoint, ScrewToAxis, AxisAng6)
+    Adjoint, ScrewToAxis, AxisAng6,
+    MatrixExp3, MatrixExp6, MatrixLog3)
+
+from rotations_and_angular_velocities.rotation_matrix import rodrigues_formula
+
+from luki_modern_robotics.rotations_and_angular_velocities.rotation_matrix import _is_skew_symmetric
 
 TEST_DATA_OK = [
     np.identity(3),
@@ -156,6 +161,20 @@ def test_MatrixExp3():
     np.testing.assert_array_almost_equal(expected, matrix_exp)
 
 
+def test_rodrigues_formula():
+    # example 3.12 from book
+    omega_hat = np.array([ 0, 0.866,  0.5])
+    theta = 0.524
+
+    expected = np.array([[0.865830625594382, -0.25017371513495706,  0.4333008746137456],
+                  [0.25017371513495706, 0.9664561804705362,  0.05809789542503132],
+                  [-0.4333008746137456,  0.05809789542503132,  0.8993744451238458]])
+
+    matrix_exp = rodrigues_formula(omega_hat, theta)
+
+    np.testing.assert_array_almost_equal(expected, matrix_exp)
+
+
 def test_MatrixLog3():
     R = np.array([[0, 0, 1],
                       [1, 0, 0],
@@ -292,3 +311,20 @@ def test_AxisAng6():
 
     np.testing.assert_array_equal(expected_S, S)
     assert expected_theta == theta
+
+
+def test_MatrixExp6():
+    se3mat = np.array([[0,          0,           0,          0],
+                       [0,          0, -1.57079632, 2.35619449],
+                       [0, 1.57079632,           0, 2.35619449],
+                       [0,          0,           0,          0]])
+
+    expected_T = np.array([[1.0, 0.0,  0.0, 0.0],
+                  [0.0, 0.0, -1.0, 0.0],
+                  [0.0, 1.0,  0.0, 3.0],
+                  [  0,   0,    0,   1]])
+
+    T = MatrixExp6(se3mat)
+
+    np.testing.assert_array_almost_equal(expected_T, T)
+
