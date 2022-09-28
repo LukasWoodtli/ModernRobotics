@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from pytest import approx
 
 from rotations_and_angular_velocities.rotation_matrix import (
     is_rotation_matrix, rot2, RotInv,
@@ -8,7 +9,7 @@ from rotations_and_angular_velocities.rotation_matrix import (
     MatrixExp3, MatrixLog3, RpToTrans,
     TransToRp, TransInv, VecTose3, se3ToVec,
     Adjoint, ScrewToAxis, AxisAng6,
-    MatrixExp6, _is_skew_symmetric)
+    MatrixExp6, MatrixLog6, _is_skew_symmetric)
 
 from rotations_and_angular_velocities.rotation_matrix import rodrigues_formula
 
@@ -330,7 +331,22 @@ def test_MatrixExp6():
     np.testing.assert_array_almost_equal(expected_T, T)
 
 
-def test_various_2():
+def test_MatrixLog6():
+    T = np.array([[1, 0,  0, 0],
+                  [0, 0, -1, 0],
+                  [0, 1,  0, 3],
+                  [0, 0,  0, 1]])
+    res = MatrixLog6(T)
+
+    expected = np.array([[0, 0, 0, 0],
+                  [0, 0, -1.57079633, 2.35619449],
+                  [0, 1.57079633, 0, 2.35619449],
+                  [0, 0, 0, 0]])
+
+    np.testing.assert_array_almost_equal(expected, res)
+
+
+def test_various_R_2():
     R_sb = np.array([[1, 0, 0],
                      [0, 0, 1],
                      [0, -1, 0]])
@@ -341,7 +357,7 @@ def test_various_2():
     np.testing.assert_array_equal(R_sb_inv_expected, R_sb_inv)
 
 
-def test_various_3():
+def test_various_R_3():
     R_as = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]).T
     R_sb = np.array([[1, 0, 0],
                      [0, 0, 1],
@@ -353,7 +369,7 @@ def test_various_3():
                                          [1, 0, 0],
                                          [0, 0, 1]]))
 
-def test_various_5():
+def test_various_R_5():
     R_sb = np.array([[1, 0, 0],
                      [0, 0, 1],
                      [0, -1, 0]])
@@ -362,14 +378,14 @@ def test_various_5():
     np.testing.assert_array_equal(p_s, np.array([1, 3, -2]))
 
 
-def test_various_7():
+def test_various_R_7():
     R_as = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]).T
     omega_s = np.array([3, 2, 1]).T
     omega_a = R_as @ omega_s
     np.testing.assert_array_equal(omega_a, np.array([1, 3, 2]))
 
 
-def test_various_8():
+def test_various_R_8():
     R_sa = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
     res = MatrixLog3(R_sa)
     np.testing.assert_array_almost_equal(res, np.array(
@@ -380,7 +396,7 @@ def test_various_8():
     assert theta == 2.961921958772245
 
 
-def test_various_9():
+def test_various_R_9():
     omega_hat_theta = np.array([1, 2, 0]).T
     omega_hat_theta = VecToso3(omega_hat_theta)
     res = MatrixExp3(omega_hat_theta)
@@ -390,7 +406,7 @@ def test_various_9():
          [-0.7036898157513979, 0.35184490787569894, -0.6172728764571664]]))
 
 
-def test_various_10():
+def test_various_R_10():
     omega = np.array([1, 2, 0.5]).T
     res = VecToso3(omega)
     np.testing.assert_array_equal(res, np.array(
@@ -399,7 +415,7 @@ def test_various_10():
          [-2., 1., 0.]]))
 
 
-def test_various_11():
+def test_various_R_11():
     omega_hat_theta = np.array([[0, 0.5, -1], [-0.5, 0, 2], [1, -2, 0]])
     assert _is_skew_symmetric(omega_hat_theta)
     res = MatrixExp3(omega_hat_theta)
@@ -409,10 +425,183 @@ def test_various_11():
          [0.6441170731448801, -0.4978750413512547, -0.5807182098770107]]))
 
 
-def test_various_12():
+def test_various_R_12():
     R = np.array([[0, 0, 1], [-1, 0, 0], [0, -1, 0]])
     omega_hat_theta = MatrixLog3(R)
     np.testing.assert_array_almost_equal(omega_hat_theta, np.array(
         [[0., 1.2092, 1.2092],
          [-1.2092, 0., 1.2092],
          [-1.2092, -1.2092, 0.]]))
+
+
+def test_various_T_1():
+    R_a = np.array([[0, -1, 0],
+         [0,  0, -1],
+         [1,  0, 0]])
+    assert is_rotation_matrix(R_a)
+    p_a = np.array([0, 0, 1])
+    T_sa_upper = np.c_[R_a, p_a]
+    T_sa = np.r_[T_sa_upper,
+                  [[0, 0, 0, 1]]]
+    np.testing.assert_array_equal(T_sa,
+        [[0, -1,  0, 0],
+         [0,  0, -1, 0],
+         [1,  0,  0, 1],
+         [0,  0,  0, 1]])
+
+def test_various_T_2():
+    R_b = np.array(
+        [[1, 0, 0],
+         [0, 0, 1],
+         [0, -1, 0]])
+    assert is_rotation_matrix(R_b)
+    p_b = np.array([0, 2, 0])
+
+    T_sb = np.r_[np.c_[R_b, p_b],
+                [[0, 0, 0, 1]]]
+    np.testing.assert_array_equal(T_sb,
+            [[1,  0, 0, 0],
+             [0,  0, 1, 2],
+             [0, -1, 0, 0],
+             [0,  0, 0, 1]])
+    T_bs = TransInv(T_sb)
+    np.testing.assert_array_equal(T_bs,
+           [[ 1,  0,  0,  0],
+            [ 0,  0, -1,  0],
+            [ 0,  1,  0, -2],
+            [ 0,  0,  0,  1]])
+
+def test_various_T_3():
+    # T_ab = T_as * T_sb
+    T_sa = np.array(
+     [[0, -1, 0, 0],
+      [0, 0, -1, 0],
+      [1, 0, 0, 1],
+      [0, 0, 0, 1]])
+    T_sb = np.array(
+    [[1, 0, 0, 0],
+     [0, 0, 1, 2],
+     [0, -1, 0, 0],
+     [0, 0, 0, 1]])
+    T_as = TransInv(T_sa)
+    T_ab = T_as @ T_sb
+    np.testing.assert_array_equal(T_ab,
+                                  [[0, -1, 0, -1],
+                                   [-1, 0, 0, 0],
+                                   [0, 0, -1, -2],
+                                   [0, 0, 0, 1]])
+
+
+def test_various_T_5():
+    # p_s = T_sb * p_b
+    T_sb = np.array(
+        [[1, 0, 0, 0],
+         [0, 0, 1, 2],
+         [0, -1, 0, 0],
+         [0, 0, 0, 1]])
+    p_b_ext = np.array([1, 2, 3, 1])
+    p_s = T_sb @ p_b_ext
+    np.testing.assert_array_equal(p_s, [1, 5, -2, 1])
+    np.testing.assert_array_equal(p_s[0:3], [1, 5, -2])
+
+
+def test_various_T_7():
+    # V_a = [Ad_T_as] * V_s
+    T_sa = np.array(
+    [[0, -1, 0, 0],
+     [0, 0, -1, 0],
+     [1, 0, 0, 1],
+     [0, 0, 0, 1]])
+    T_as = TransInv(T_sa)
+    Ad_T_as = Adjoint(T_as)
+    V_s = np.array([3, 2, 1, -1, -2, -3]).T
+    V_a = Ad_T_as @ V_s
+    np.testing.assert_array_equal(V_a, [ 1, -3, -2, -3, -1,  5])
+
+def test_various_T_8():
+    T_sa = np.array([[0, -1,  0, 0],
+         [0,  0, -1, 0],
+         [1,  0,  0, 1],
+         [0,  0,  0, 1]])
+    s_theta = MatrixLog6(T_sa)
+    vec = se3ToVec(s_theta)
+    S, theta = AxisAng6(vec)
+    np.testing.assert_array_almost_equal(S,
+         [ 0.57735 , -0.57735 ,  0.57735 ,  0.351605,  0.225745,  0.351605])
+    assert theta == approx(2.09439510239319)
+
+def test_various_T_9():
+    V = np.array([0, 1, 2, 3, 0, 0]).T
+    se3 = VecTose3(V)
+    T = MatrixExp6(se3)
+    np.testing.assert_array_almost_equal(T,
+             [[-0.617273, -0.70369, 0.351845, 1.055535],
+              [0.70369, -0.293818, 0.646909, 1.940727],
+              [-0.351845, 0.646909, 0.676545, -0.970364],
+              [0., 0., 0., 1.]])
+
+def test_various_T_10():
+    # F_s = Ad_T_sb^T * F_b
+    T_bs = np.array([[1, 0, 0, 0],
+            [0, 0, -1, 0],
+            [0, 1, 0, -2],
+            [0, 0, 0, 1]])
+    Ad_T_bs = Adjoint(T_bs)
+    Ad_T_bs_transpose = Ad_T_bs.T
+    F_b = np.array([1, 0, 0, 2, 1, 0]).T
+    F_s = Ad_T_bs_transpose @ F_b
+    np.testing.assert_array_equal(F_s, [-1,  0, -4,  2,  0, -1])
+
+def test_various_T_11():
+    T = np.array([[0, -1, 0, 3],
+                  [1,  0, 0, 0],
+                  [0,  0, 1, 1],
+                  [0,  0, 0, 1]])
+    T_t = TransInv(T)
+    np.testing.assert_array_equal(T_t,
+                                  [[0, 1, 0, 0],
+                                   [-1, 0, 0, 3],
+                                   [0, 0, 1, -1],
+                                   [0, 0, 0, 1]])
+
+def test_various_T_12():
+    V = np.array([1, 0, 0, 0, 2, 3]).T
+    se3 = VecTose3(V)
+    np.testing.assert_array_equal(se3,
+                                  [[0, 0,  0, 0],
+                                   [0, 0, -1, 2],
+                                   [0, 1,  0, 3],
+                                   [0, 0,  0, 0]])
+
+def test_various_T_13():
+    p = np.array([0, 0, 2])
+    s = np.array([1, 0, 0])
+    h = 1
+    a = ScrewToAxis(p, s, h)
+    np.testing.assert_array_equal(a, [1, 0, 0, 1, 2, 0])
+
+# def test_various_T_14():
+#     se3 = np.array(
+#         [[     0, -1.5708, 0,  2.3562],
+#          [1.5708,       0, 0, -2.3562],
+#          [     0,       0, 0,       1],
+#          [     0,       0, 0,       0]])
+#     T = MatrixExp6(se3)
+#     np.testing.assert_array_almost_equal(T,
+#          [[-3.673205e-06, -0.9999999999932537, 0.000000e+00, 3.000000e+00],
+#           [1.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00],
+#           [0.000000e+00, 0.000000e+00, 1.000000e+00, 1.000000e+00],
+#           [0.000000e+00, 0.000000e+00, 0.000000e+00, 1.000000e+00]])
+
+def test_various_T_15():
+    T = np.array(
+        [[0, -1, 0, 3],
+         [1,  0, 0, 0],
+         [0,  0, 1, 1],
+         [0,  0, 0, 1]])
+    se3 = MatrixLog6(T)
+    np.testing.assert_array_almost_equal(se3,
+                                         [[0., -1.570796, 0., 2.356194],
+                                          [1.570796, 0., 0., -2.356194],
+                                          [0., 0., 0., 1.],
+                                          [0., 0., 0., 0.]])

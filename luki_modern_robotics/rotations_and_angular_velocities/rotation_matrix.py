@@ -156,11 +156,13 @@ def MatrixLog3(R):
 
 
 def RpToTrans(R, p):
+    assert is_rotation_matrix(R)
     return np.r_[np.c_[R, p], [[0, 0, 0, 1]]]
 
 
 def TransToRp(T):
     R = T[0:3, 0:3]
+    assert is_rotation_matrix(R)
     p = T[0:3, 3]
     return R, p
 
@@ -252,6 +254,22 @@ def MatrixExp6(se3mat):
                         [[0, 0, 0, 1]]]
 
 
+def MatrixLog6(T):
+    R, _p = TransToRp(T)
+    omgmat = MatrixLog3(R)
+    if np.array_equal(R, np.eye(3)):
+        return np.r_[np.c_[np.zeros((3, 3)),
+                           [T[0][3], T[1][3], T[2][3]]],
+                     [[0, 0, 0, 0]]]
+
+    theta = np.arccos((np.trace(R) - 1) / 2.0)
+    return np.r_[np.c_[omgmat,
+                       np.dot(np.eye(3) - omgmat / 2.0 \
+                       + (1.0 / theta - 1.0 / np.tan(theta / 2.0) / 2) \
+                          * np.dot(omgmat,omgmat) / theta,[T[0][3],
+                                                           T[1][3],
+                                                           T[2][3]])],
+                 [[0, 0, 0, 0]]]
 
 def _is_square(m):
     """
