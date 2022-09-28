@@ -2,16 +2,15 @@ import numpy as np
 import pytest
 from pytest import approx
 
-from rotations_and_angular_velocities.rotation_matrix import (
+from rotations_and_angular_velocities.transformation_matrix import (
     is_rotation_matrix, rot2, RotInv,
     NotARotationMatrix, VecToso3,
     NotAVector, so3ToVec, AxisAng3,
     MatrixExp3, MatrixLog3, RpToTrans,
     TransToRp, TransInv, VecTose3, se3ToVec,
     Adjoint, ScrewToAxis, AxisAng6,
-    MatrixExp6, MatrixLog6, _is_skew_symmetric)
-
-from rotations_and_angular_velocities.rotation_matrix import rodrigues_formula
+    MatrixExp6, MatrixLog6, _is_skew_symmetric,
+    rodrigues_formula)
 
 
 TEST_DATA_OK = [
