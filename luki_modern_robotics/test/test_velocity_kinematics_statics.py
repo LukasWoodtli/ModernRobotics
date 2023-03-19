@@ -1,5 +1,8 @@
 import numpy as np
-from modern_robotics import JacobianSpace, JacobianBody
+from modern_robotics import JacobianSpace, JacobianBody, IKinSpace, se3ToVec, MatrixLog6, TransInv, FKinBody
+
+from sympy import Matrix
+from sympy.abc import x, y
 
 def test_wrench():
     #tau = J^T(phi)*f_{tip}
@@ -114,4 +117,75 @@ def test_manipulability():
     longest_axis_vec = eigen_vectors[:, 0]
     assert longest_axis_len == 1.230535714784298
     np.testing.assert_array_almost_equal(longest_axis_vec, [ 0.08715237,  0.9961950, -0.0002282767])
+
+
+def test_newton_raphson_2_iterations():
+    # Jacobian of the given matrix
+    # Maxima syntax: `jacobian([[x^2-9],[y^2-4]], [x,y]);`
+    f = Matrix([x**2 - 9, y**2 -4])
+    xy = Matrix([x, y])
+    J = f.jacobian(xy)
+    assert J == Matrix([[2*x, 0], [0, 2*y]])
+
+    def f(m):
+        x = m[0]
+        y = m[1]
+        return np.array([x**2 - 9, y**2 -4])
+    def J_penrose_moore_inverse(m):
+        x, y = m[0], m[1]
+        res = np.array([[2 * x, 0],
+                        [0, 2 * y]])
+        res = np.linalg.pinv(res)
+        return res
+
+
+    # initial guess (iteration 0)
+    m = (x0, y0) = (1, 1)
+
+    for i in range(2):
+        e = 0 - f(m)
+        m = m + np.dot(J_penrose_moore_inverse(m), e)
+    np.testing.assert_array_equal([3.4,  2.05], m)
+
+
+def test_inverse_kinematic():
+    # joint screws
+    omg_0 = np.array([0, 0, 1])
+    q_0 = np.array([0, 0, 0])
+    v_0 = -np.cross(omg_0, q_0)
+
+    omg_1 = np.array([0, 0, 1])
+    q_1 = np.array([1, 0, 0])
+    v_1 = -np.cross(omg_1, q_1)
+
+    omg_2 = np.array([0, 0, 1])
+    q_2 = np.array([2, 0, 0])
+    v_2 = -np.cross(omg_2, q_2)
+
+    s0 = np.r_[omg_0, v_0]
+    s1 = np.r_[omg_1, v_1]
+    s2 = np.r_[omg_2, v_2]
+    Slist = np.c_[s0.T, s1.T, s2.T]
+
+    # home config
+    M = np.array([[1, 0, 0, 3],
+                  [0, 1, 0, 0],
+                  [0, 0, 1, 0],
+                  [0, 0, 0, 1]])
+
+    # desired end-effector configuration
+    T = np.array([[-0.585, -0.811, 0, 0.076],
+                  [0.811, -0.585, 0, 2.608],
+                  [0, 0, 1, 0],
+                  [0, 0, 0, 1]])
+    thetalist0 = np.array([np.pi/4,
+                           np.pi/4,
+                           np.pi/4])  # initial guess
+    eomg = 0.001  # (0.057 degrees) tolerance of angular velocities
+    ev = 0.0001  # (0.1 mm) tolerance of linear velocities
+
+
+    thetalist, success = IKinSpace(Slist, M, T, thetalist0, eomg, ev)
+    assert success
+    np.testing.assert_array_almost_equal(thetalist, [0.925198, 0.586225, 0.684273])
 
