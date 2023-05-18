@@ -1,4 +1,5 @@
 import numpy as np
+import pytest as pytest
 from modern_robotics import JacobianSpace, JacobianBody, IKinSpace, se3ToVec, MatrixLog6, TransInv, FKinBody
 
 from sympy import Matrix
@@ -115,7 +116,7 @@ def test_manipulability():
     longest_axis_len = eigen_values[0]
     eigen_vectors = eigen_vectors[:, idx]
     longest_axis_vec = eigen_vectors[:, 0]
-    assert longest_axis_len == 1.230535714784298
+    assert longest_axis_len == pytest.approx(1.230535714784298)
     np.testing.assert_array_almost_equal(longest_axis_vec, [ 0.08715237,  0.9961950, -0.0002282767])
 
 

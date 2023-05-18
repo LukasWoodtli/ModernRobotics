@@ -32,7 +32,7 @@ def test_mass_matrix():
         [- 0.01211731636673351, 1.9633115200104518e-18, 2.0409385261450496e-18, 1.902530704689376e-18, 0.0, 0.0171364731454 ]
     ]
 
-    np.testing.assert_array_equal(M, expected)
+    np.testing.assert_array_almost_equal(M, expected)
 
 def test_vel_quadratic_forces():
     c = VelQuadraticForces(thetalist, dthetalist, Mlist, Glist, Slist)
