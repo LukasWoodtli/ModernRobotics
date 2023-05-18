@@ -2,7 +2,7 @@ import numpy as np
 from modern_robotics import InverseDynamics, MassMatrix, VelQuadraticForces, GravityForces, EndEffectorForces, \
     ForwardDynamics
 
-from luki_modern_robotics.test import ur5_parameter
+from luki_modern_robotics.test import ur5_parameter  # pylint: disable=import-error
 
 
 thetalist = np.array([0, np.pi/6, np.pi/4, np.pi/3, np.pi/2 ,2*np.pi/3])

@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from modern_robotics import QuinticTimeScaling, ScrewTrajectory, CartesianTrajectory
 from sympy import symbols, init_printing, pprint, Eq, linsolve, Poly
-from sympy import poly, diff
+from sympy import diff
 
 init_printing(use_unicode=True)
 
@@ -38,7 +38,7 @@ def test_elliptical_path():
 
     # plt.show()
 
-def test_5th_order_polynomial():
+def test_5th_order_polynomial():  # pylint: disable=too-many-locals
     a0,a1,a2,a3,a4,a5,t,T = symbols('a0,a1,a2,a3,a4,a5,t,T')
     s = Poly.from_list([a5, a4, a3, a2, a1, a0], t)
     ds = diff(s, t)

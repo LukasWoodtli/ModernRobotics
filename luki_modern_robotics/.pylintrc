@@ -6,6 +6,8 @@ ignore-patterns=scratch.py
 
 disable=invalid-name,
     missing-docstring,
+    line-too-long,
+    redefined-outer-name
 
 
 

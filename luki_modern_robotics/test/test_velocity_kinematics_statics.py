@@ -1,11 +1,11 @@
 import numpy as np
-import pytest as pytest
-from modern_robotics import JacobianSpace, JacobianBody, IKinSpace, se3ToVec, MatrixLog6, TransInv, FKinBody
+import pytest
+from modern_robotics import JacobianSpace, JacobianBody, IKinSpace
 
 from sympy import Matrix
 from sympy.abc import x, y
 
-def test_wrench():
+def test_wrench():  # pylint: disable=too-many-locals
     #tau = J^T(phi)*f_{tip}
     f_tip = np.array([0, 0, 0, 2, 0, 0])
 
@@ -32,10 +32,11 @@ def test_wrench():
     tau = np.dot(J.T, f_tip)
     np.testing.assert_array_almost_equal(tau, [0.      , 0.      , 1.414214])
 
-def test_wrench2():
+def test_wrench2():  # pylint: disable=too-many-locals
     # 2
     L1=L2=L3=L4=1
-    Theta1 = Theta2 = 0
+    # Theta1 = 0
+    Theta2 = 0
     Theta3 = np.pi / 2.
     Theta4 = -np.pi / 2.
     F_b = np.array(
@@ -128,7 +129,7 @@ def test_newton_raphson_2_iterations():
     J = f.jacobian(xy)
     assert J == Matrix([[2*x, 0], [0, 2*y]])
 
-    def f(m):
+    def f(m):  # pylint: disable=function-redefined
         x = m[0]
         y = m[1]
         return np.array([x**2 - 9, y**2 -4])
@@ -141,15 +142,15 @@ def test_newton_raphson_2_iterations():
 
 
     # initial guess (iteration 0)
-    m = (x0, y0) = (1, 1)
+    m = (x0, y0) = (1, 1)  # pylint: disable=unused-variable
 
-    for i in range(2):
+    for _ in range(2):
         e = 0 - f(m)
         m = m + np.dot(J_penrose_moore_inverse(m), e)
     np.testing.assert_array_equal([3.4,  2.05], m)
 
 
-def test_inverse_kinematic():
+def test_inverse_kinematic():  # pylint: disable=too-many-locals
     # joint screws
     omg_0 = np.array([0, 0, 1])
     q_0 = np.array([0, 0, 0])
@@ -189,4 +190,3 @@ def test_inverse_kinematic():
     thetalist, success = IKinSpace(Slist, M, T, thetalist0, eomg, ev)
     assert success
     np.testing.assert_array_almost_equal(thetalist, [0.925198, 0.586225, 0.684273])
-

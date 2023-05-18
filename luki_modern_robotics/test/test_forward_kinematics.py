@@ -1,7 +1,7 @@
 from modern_robotics import Adjoint, TransInv, FKinSpace, FKinBody
 import numpy as np
 
-def test_M():
+def test_M():  # pylint: disable=too-many-locals,too-many-statements
     # 1
     M = np.array(
         [[1, 0, 0, np.sqrt(3) + 2],
