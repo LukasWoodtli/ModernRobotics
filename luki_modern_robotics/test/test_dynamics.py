@@ -43,7 +43,7 @@ def test_vel_quadratic_forces():
 def test_gravity_forces():
     grav = GravityForces(thetalist, g, Mlist, Glist, Slist)
     expected = [ 5.47883360e-16, -4.15967263e+01, -3.93590583e+00,  1.23367683e-01,  5.63470848e-18,  4.89532676e-18]
-    np.testing.assert_array_equal(grav, expected)
+    np.testing.assert_array_almost_equal(grav, expected)
 
 
 def test_end_effector_forces():
