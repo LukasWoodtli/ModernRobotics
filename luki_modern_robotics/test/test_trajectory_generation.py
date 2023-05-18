@@ -48,11 +48,11 @@ def test_5th_order_polynomial():  # pylint: disable=too-many-locals
     pprint(ds)
     pprint(dds)
 
-    s_0 = Eq(s(0), 0)
+    s_0 = Eq(s(0), 0)  # pylint: disable=not-callable
     ds_0 = Eq(ds(0), 0)
     dds_0 = Eq(dds(0), 0)
 
-    s_T =  Eq(s(T), 1)
+    s_T =  Eq(s(T), 1)  # pylint: disable=not-callable
     ds_T = Eq(ds(T), 0)
     dds_T = Eq(dds(T), 0)
 
