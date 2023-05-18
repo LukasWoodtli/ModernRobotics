@@ -18,3 +18,4 @@ six==1.15.0
 toml==0.10.2
 wrapt==1.12.1
 sympy==1.11.1
+matplotlib==3.7.1
