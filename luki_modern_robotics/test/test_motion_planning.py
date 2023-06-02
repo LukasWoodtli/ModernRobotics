@@ -124,12 +124,23 @@ def print_all():
     log("\n" + s)
     log("="*40)
 
+def print_entry_for_nodes(row_title, list_entries):
+    ret = f"\n{f'{row_title}:':<15}"
+    for e in range(1, 7):
+        ret += f"{list_entries[e]:>3} | "
+    return ret
 
 def collect_information():
-    s = print_past_cost()
-    s += print_optimist_cost_to_go()
-    s += print_est_tot_cost()
-    s += print_parent_nodes()
+    s = print_entry_for_nodes("Past cost", past_cost)
+
+    s += print_entry_for_nodes("optimist ctg", heuristic_cost_to_go)
+
+    lst = {i: open_list.get_est_total_cost(i) for i in range(1, 7)}
+    s += print_entry_for_nodes("est tot cost", lst)
+
+    lst1 = {i1: parent.get(i1, "-") for i1 in range(1, 7)}
+    s += print_entry_for_nodes('parent node', lst1)
+
     s += print_open()
     s += print_closed()
     return s
@@ -143,41 +154,6 @@ def get_path(item):
         nxt = parent[nxt]
     path = [start] + path
     return path
-
-
-def print_past_cost():
-    ret = f"\n{'Past cost:':<15}"
-
-    for i in range(1, 7):
-        val = past_cost[i]
-        ret += f"{val:>3} | "
-    return ret
-
-
-def print_optimist_cost_to_go():
-    ret = f"\n{'optimist ctg:':<15}"
-
-    for i in range(1, 7):
-        val = heuristic_cost_to_go[i]
-        ret += f'{val:>3} | '
-    return ret
-
-
-
-def print_est_tot_cost():
-    ret = f"\n{'est tot cost':<15}"
-
-    for i in range(1, 7):
-        ret += f'{open_list.get_est_total_cost(i):>3} | '
-    return ret
-
-def print_parent_nodes():
-    ret = f"\n{'parent node:':<15}"
-
-    for i in range(1, 7):
-        p = parent.get(i, "-")
-        ret += f'{p:>3} | '
-    return ret
 
 
 def print_open():
@@ -223,7 +199,7 @@ nbr: 3
 
 Past cost:       0 |  99 |  18 |  99 |  99 |  99 | 
 optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
-est tot cost    oo |  oo |  28 |  oo |  oo |  oo | 
+est tot cost:   oo |  oo |  28 |  oo |  oo |  oo | 
 parent node:     - |   - |   1 |   - |   - |   - | 
 OPEN
 3 (28), 
@@ -235,7 +211,7 @@ nbr: 4
 
 Past cost:       0 |  99 |  18 |  12 |  99 |  99 | 
 optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
-est tot cost    oo |  oo |  28 |  22 |  oo |  oo | 
+est tot cost:   oo |  oo |  28 |  22 |  oo |  oo | 
 parent node:     - |   - |   1 |   1 |   - |   - | 
 OPEN
 4 (22), 3 (28), 
@@ -247,7 +223,7 @@ nbr: 5
 
 Past cost:       0 |  99 |  18 |  12 |  30 |  99 | 
 optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
-est tot cost    oo |  oo |  28 |  22 |  40 |  oo | 
+est tot cost:   oo |  oo |  28 |  22 |  40 |  oo | 
 parent node:     - |   - |   1 |   1 |   1 |   - | 
 OPEN
 4 (22), 3 (28), 5 (40), 
@@ -260,7 +236,7 @@ nbr: 5
 
 Past cost:       0 |  99 |  18 |  12 |  20 |  99 | 
 optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
-est tot cost    oo |  oo |  28 |  oo |  30 |  oo | 
+est tot cost:   oo |  oo |  28 |  oo |  30 |  oo | 
 parent node:     - |   - |   1 |   1 |   4 |   - | 
 OPEN
 3 (28), 5 (30), 
@@ -272,7 +248,7 @@ nbr: 6
 
 Past cost:       0 |  99 |  18 |  12 |  20 |  32 | 
 optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
-est tot cost    oo |  oo |  28 |  oo |  30 |  32 | 
+est tot cost:   oo |  oo |  28 |  oo |  30 |  32 | 
 parent node:     - |   - |   1 |   1 |   4 |   4 | 
 OPEN
 3 (28), 5 (30), 6 (32), 
@@ -285,7 +261,7 @@ nbr: 2
 
 Past cost:       0 |  45 |  18 |  12 |  20 |  32 | 
 optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
-est tot cost    oo |  55 |  oo |  oo |  30 |  32 | 
+est tot cost:   oo |  55 |  oo |  oo |  30 |  32 | 
 parent node:     - |   3 |   1 |   1 |   4 |   4 | 
 OPEN
 5 (30), 6 (32), 2 (55), 
@@ -297,7 +273,7 @@ nbr: 6
 
 Past cost:       0 |  45 |  18 |  12 |  20 |  32 | 
 optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
-est tot cost    oo |  55 |  oo |  oo |  30 |  32 | 
+est tot cost:   oo |  55 |  oo |  oo |  30 |  32 | 
 parent node:     - |   3 |   1 |   1 |   4 |   4 | 
 OPEN
 5 (30), 6 (32), 2 (55), 
@@ -310,7 +286,7 @@ nbr: 6
 
 Past cost:       0 |  45 |  18 |  12 |  20 |  30 | 
 optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
-est tot cost    oo |  55 |  oo |  oo |  oo |  30 | 
+est tot cost:   oo |  55 |  oo |  oo |  oo |  30 | 
 parent node:     - |   3 |   1 |   1 |   4 |   5 | 
 OPEN
 6 (30), 2 (55), 
