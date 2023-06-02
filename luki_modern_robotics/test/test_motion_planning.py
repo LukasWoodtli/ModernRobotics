@@ -1,5 +1,9 @@
 from collections import defaultdict
 
+log_str = ""
+def log(string):
+    global log_str  # pylint: disable=global-statement
+    log_str += string
 
 class OpenList:
     def __init__(self):
@@ -65,6 +69,10 @@ def get_neighbors(node):
                 result.add(k1)
     return result
 
+def get_neighbors_not_in_closed(node):
+    nbrs = get_neighbors(node)
+    return [n for n in nbrs if n not in closed_list]
+
 
 # minimum cost so far for node (from start)
 past_cost = defaultdict(lambda: 99)
@@ -76,105 +84,119 @@ for i in range(2, 6):
 heuristic_cost_to_go[6] = 0
 
 parent = {}
-#  f f-Wert wird als nächster untersucht.
-#
-# f(x)=g(x)+h(x)
-# g(x): bisherigen Kosten vom Startknoten aus, um x zu erreichen
-# h(x): geschätzten Kosten von x bis zum Zielknoten
-# c(a, b): Kosten der Kante
 
 
 def a_star():
-    open_list.insert(1, 20)
-    past_cost[1] = 0
-    print_all()
+    init_a_star(start)
     while not open_list.empty():
         current = open_list.get_first()
+        log(f"\ncurrent: {current}")
         if current == end:
             return end
         closed_list.add(current)
-        for nbr in get_neighbors(current):
-            if nbr in closed_list:
-                continue
-            tentative_past_cost = past_cost[current] + cost[current][nbr]
-            if tentative_past_cost < past_cost[nbr]:
-                past_cost[nbr] = tentative_past_cost
-                parent[nbr] = current
-                est_total_cost = past_cost[nbr] + heuristic_cost_to_go[nbr]
-                open_list.insert(nbr, est_total_cost)
-            print_all()
+        for nbr in get_neighbors_not_in_closed(current):
+            process_neighbor(current, nbr)
     return None
 
 
+def process_neighbor(current, nbr):
+    log(f"\nnbr: {nbr}")
+    tentative_past_cost = past_cost[current] + cost[current][nbr]
+    if tentative_past_cost < past_cost[nbr]:
+        update_best_path(current, nbr, tentative_past_cost)
+    print_all()
+
+
+def update_best_path(current, nbr, tentative_past_cost):
+    past_cost[nbr] = tentative_past_cost
+    parent[nbr] = current
+    est_total_cost = past_cost[nbr] + heuristic_cost_to_go[nbr]
+    open_list.insert(nbr, est_total_cost)
+
+
+def init_a_star(start):
+    open_list.insert(start, heuristic_cost_to_go[start])
+    past_cost[start] = 0
+
+
 def print_all():
-    print_past_cost()
-    print_optimist_cost_to_go()
-    print_est_tot_cost()
-    print_parent_nodes()
-    print_open()
-    print_closed()
-    print("\n" + "="*40)
+    s = collect_information()
+    log("\n" + s)
+    log("="*40)
 
 
-def print_path(item):
+def collect_information():
+    s = print_past_cost()
+    s += print_optimist_cost_to_go()
+    s += print_est_tot_cost()
+    s += print_parent_nodes()
+    s += print_open()
+    s += print_closed()
+    return s
+
+
+def get_path(item):
     path = []
     nxt = item
     while nxt != start:
         path = [nxt] + path
         nxt = parent[nxt]
     path = [start] + path
-    print(path)
+    return path
 
 
 def print_past_cost():
-    print()
-    print(f"{'Past cost':<15}", end="")
+    ret = f"\n{'Past cost:':<15}"
 
     for i in range(1, 7):
         val = past_cost[i]
-        print(f"{val:>3} | ", end="")
+        ret += f"{val:>3} | "
+    return ret
 
 
 def print_optimist_cost_to_go():
-    print()
-    print(f"{'optimist ctg:':<15}", end="")
+    ret = f"\n{'optimist ctg:':<15}"
 
     for i in range(1, 7):
         val = heuristic_cost_to_go[i]
-        print(f'{val:>3} | ', end="")
+        ret += f'{val:>3} | '
+    return ret
+
 
 
 def print_est_tot_cost():
-    print()
-    print(f"{'est tot cost':<15}", end="")
+    ret = f"\n{'est tot cost':<15}"
 
     for i in range(1, 7):
-        print(f'{open_list.get_est_total_cost(i):>3} | ', end="")
+        ret += f'{open_list.get_est_total_cost(i):>3} | '
+    return ret
 
 def print_parent_nodes():
-    print()
-    print(f"{'parent node:':<15}", end="")
+    ret = f"\n{'parent node:':<15}"
 
     for i in range(1, 7):
         p = parent.get(i, "-")
-        print(f'{p:>3} | ', end="")
+        ret += f'{p:>3} | '
+    return ret
 
 
 def print_open():
-    print("\nOPEN")
+    ret = "\nOPEN\n"
     lst = list(open_list.dict.items())
     lst.sort(key=lambda x: x[1])
     for l in lst:
-        print(f"{l[0]} ({l[1]}), ", end="")
-    print()
+        ret += f"{l[0]} ({l[1]}), "
+    ret += '\n'
+    return ret
 
 def print_closed():
-    print("CLOSED")
+    ret = "CLOSED\n"
     lst = list(closed_list)
     lst.sort()
     for l in lst:
-        print(f"{l}, ", end="")
-    print()
+        ret += f"{l}, "
+    ret += "\n\n"
+    return ret
 
 
 def test_cost():
@@ -184,7 +206,121 @@ def test_cost():
     assert cost[3][6] == 15
     assert cost[3][2] == 27
 
+def test_init_a_star():
+    init_a_star(start)
+    assert len(open_list.dict) == 1
+    assert open_list.dict[1] == 20
+    assert past_cost[1] == 0
+    assert len(closed_list) == 0
+
+
+
 
 def test_a_star():
+    expected = """
+current: 1
+nbr: 3
+
+Past cost:       0 |  99 |  18 |  99 |  99 |  99 | 
+optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
+est tot cost    oo |  oo |  28 |  oo |  oo |  oo | 
+parent node:     - |   - |   1 |   - |   - |   - | 
+OPEN
+3 (28), 
+CLOSED
+1, 
+
+========================================
+nbr: 4
+
+Past cost:       0 |  99 |  18 |  12 |  99 |  99 | 
+optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
+est tot cost    oo |  oo |  28 |  22 |  oo |  oo | 
+parent node:     - |   - |   1 |   1 |   - |   - | 
+OPEN
+4 (22), 3 (28), 
+CLOSED
+1, 
+
+========================================
+nbr: 5
+
+Past cost:       0 |  99 |  18 |  12 |  30 |  99 | 
+optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
+est tot cost    oo |  oo |  28 |  22 |  40 |  oo | 
+parent node:     - |   - |   1 |   1 |   1 |   - | 
+OPEN
+4 (22), 3 (28), 5 (40), 
+CLOSED
+1, 
+
+========================================
+current: 4
+nbr: 5
+
+Past cost:       0 |  99 |  18 |  12 |  20 |  99 | 
+optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
+est tot cost    oo |  oo |  28 |  oo |  30 |  oo | 
+parent node:     - |   - |   1 |   1 |   4 |   - | 
+OPEN
+3 (28), 5 (30), 
+CLOSED
+1, 4, 
+
+========================================
+nbr: 6
+
+Past cost:       0 |  99 |  18 |  12 |  20 |  32 | 
+optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
+est tot cost    oo |  oo |  28 |  oo |  30 |  32 | 
+parent node:     - |   - |   1 |   1 |   4 |   4 | 
+OPEN
+3 (28), 5 (30), 6 (32), 
+CLOSED
+1, 4, 
+
+========================================
+current: 3
+nbr: 2
+
+Past cost:       0 |  45 |  18 |  12 |  20 |  32 | 
+optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
+est tot cost    oo |  55 |  oo |  oo |  30 |  32 | 
+parent node:     - |   3 |   1 |   1 |   4 |   4 | 
+OPEN
+5 (30), 6 (32), 2 (55), 
+CLOSED
+1, 3, 4, 
+
+========================================
+nbr: 6
+
+Past cost:       0 |  45 |  18 |  12 |  20 |  32 | 
+optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
+est tot cost    oo |  55 |  oo |  oo |  30 |  32 | 
+parent node:     - |   3 |   1 |   1 |   4 |   4 | 
+OPEN
+5 (30), 6 (32), 2 (55), 
+CLOSED
+1, 3, 4, 
+
+========================================
+current: 5
+nbr: 6
+
+Past cost:       0 |  45 |  18 |  12 |  20 |  30 | 
+optimist ctg:   20 |  10 |  10 |  10 |  10 |   0 | 
+est tot cost    oo |  55 |  oo |  oo |  oo |  30 | 
+parent node:     - |   3 |   1 |   1 |   4 |   5 | 
+OPEN
+6 (30), 2 (55), 
+CLOSED
+1, 3, 4, 5, 
+
+========================================
+current: 6"""
+
     parent = a_star()
-    print_path(parent)
+    path = get_path(parent)
+    assert expected == log_str
+    assert path == [1, 4, 5, 6]
