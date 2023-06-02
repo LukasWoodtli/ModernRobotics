@@ -3,7 +3,7 @@ from collections import defaultdict
 
 class OpenList:
     def __init__(self):
-        self.dict = dict()
+        self.dict = {}
 
     def insert(self, value, est_total_cost):
         self.dict[value] = est_total_cost
@@ -60,7 +60,7 @@ def get_neighbors(node):
     result = set()
     for k0, v0 in cost.items():
         for k1, v1 in v0.items():
-            if v0 and v1 and (k0 == node or k1 == node):
+            if v0 and v1 and node in (k0, k1):
                 result.add(k0)
                 result.add(k1)
     return result
@@ -69,13 +69,13 @@ def get_neighbors(node):
 # minimum cost so far for node (from start)
 past_cost = defaultdict(lambda: 99)
 
-heuristic_cost_to_go = dict()
+heuristic_cost_to_go = {}
 heuristic_cost_to_go[1] = 20
-for i in range(2,6):
+for i in range(2, 6):
     heuristic_cost_to_go[i] = 10
 heuristic_cost_to_go[6] = 0
 
-parent = dict()
+parent = {}
 #  f f-Wert wird als nächster untersucht.
 #
 # f(x)=g(x)+h(x)
@@ -128,44 +128,41 @@ def print_path(item):
 
 def print_past_cost():
     print()
-    print("{:<15}".format("Past cost:"), end="")
+    print(f"{'Past cost':<15}", end="")
 
     for i in range(1, 7):
         val = past_cost[i]
-        print('{:>3}'.format(val) + " | ", end="")
+        print(f"{val:>3} | ", end="")
 
 
 def print_optimist_cost_to_go():
     print()
-    print("{:<15}".format("optimist ctg:"), end="")
+    print(f"{'optimist ctg:':<15}", end="")
 
     for i in range(1, 7):
         val = heuristic_cost_to_go[i]
-        print('{:>3}'.format(val) + " | ", end="")
+        print(f'{val:>3} | ', end="")
 
 
 def print_est_tot_cost():
     print()
-    print("{:<15}".format("est tot cost:"), end="")
+    print(f"{'est tot cost':<15}", end="")
 
     for i in range(1, 7):
-        print('{:>3}'.format(open_list.get_est_total_cost(i)) + " | ", end="")
+        print(f'{open_list.get_est_total_cost(i):>3} | ', end="")
 
 def print_parent_nodes():
     print()
-    print("{:<15}".format("parent node:"), end="")
+    print(f"{'parent node:':<15}", end="")
 
     for i in range(1, 7):
-        p = "-"
-        if i in parent:
-            p = parent[i]
-
-        print('{:>3}'.format(p) + " | ", end="")
+        p = parent.get(i, "-")
+        print(f'{p:>3} | ', end="")
 
 
 def print_open():
     print("\nOPEN")
-    lst = [(k, v) for k, v in open_list.dict.items()]
+    lst = list(open_list.dict.items())
     lst.sort(key=lambda x: x[1])
     for l in lst:
         print(f"{l[0]} ({l[1]}), ", end="")
