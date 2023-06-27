@@ -31,7 +31,7 @@ class OpenList:
             return "oo"
         return self.dict[value]
 
-class AStar:
+class AStar:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, start, end, cost_list, heuristic_cost_to_go):
         self.open_list = OpenList()
