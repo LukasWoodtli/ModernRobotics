@@ -1,4 +1,6 @@
 import numpy as np
+import sympy
+from modern_robotics import MatrixExp6, VecTose3, se3ToVec
 
 
 def h_i_0(r_i, x_i, y_i, gamma_i, beta_i):
@@ -60,3 +62,49 @@ def test_control_set():
     # v = omega * r
     omega = v_max / r_min
     assert omega == 5.0
+
+
+def test_lie_bracket():
+    from sympy import sin, cos, symbols, Matrix, Derivative
+    from sympy import init_printing
+    init_printing()
+    phi, x, y, Theta_L, Theta_R, r, d = symbols("phi x y Theta_L Theta_R r d", real=True)
+    q = Matrix([phi, x, y, Theta_L, Theta_R])
+
+    g_1 = sympy.Matrix([[-r / (2 * d),
+                             (r / 2) * cos(phi),
+                             (r / 2) * sin(phi),
+                             1,
+                             0]]).T
+
+    g_2 = sympy.Matrix([[r / (2 * d),
+                             (r / 2) * cos(phi),
+                             (r / 2) * sin(phi),
+                             0,
+                             1]]).T
+
+    print()
+    res = sympy.simplify(g_2.jacobian(q) * g_1 - g_1.jacobian(q) * g_2)
+    sympy.pprint(res)
+
+
+def test_four_mecanum_wheel_robot_1():
+    r = 1
+    l = 3
+    omega = 2
+    u = np.array([-1.18, 0.68, 0.02, -0.52]).T
+    H_0 = 1/r * np.array([[-l - omega, 1, -1],
+                          [ l + omega, 1,  1],
+                          [ l + omega, 1, -1],
+                          [-l - omega, 1,  1],
+                          ])
+    V_b = np.dot(np.linalg.pinv(H_0), u)
+    np.testing.assert_array_almost_equal(V_b, [0.12,-0.25,0.33])
+
+
+def test_four_mecanum_wheel_robot_2():
+    V_b = [0, 0, 0.12,-0.25,0.33, 0]
+    m = MatrixExp6(VecTose3(V_b))
+    m = se3ToVec(m)
+    np.testing.assert_array_almost_equal(m, [0.0,0.0,0.119712,-0.269177,0.314227,0.0])
+    np.testing.assert_array_almost_equal(m[2:5], [0.119712,-0.269177,0.314227])
