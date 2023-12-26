@@ -1,5 +1,4 @@
 import numpy as np
-import sympy
 from modern_robotics import MatrixExp6, VecTose3, se3ToVec
 
 
@@ -64,28 +63,28 @@ def test_control_set():
     assert omega == 5.0
 
 
-def test_lie_bracket():
-    from sympy import sin, cos, symbols, Matrix, Derivative
-    from sympy import init_printing
+def test_lie_bracket():  # pylint: disable=too-many-locals
+    from sympy import sin, cos, symbols, Matrix, simplify  # pylint: disable=import-outside-toplevel
+    from sympy import init_printing, pprint  # pylint: disable=import-outside-toplevel
     init_printing()
     phi, x, y, Theta_L, Theta_R, r, d = symbols("phi x y Theta_L Theta_R r d", real=True)
     q = Matrix([phi, x, y, Theta_L, Theta_R])
 
-    g_1 = sympy.Matrix([[-r / (2 * d),
+    g_1 = Matrix([[-r / (2 * d),
                              (r / 2) * cos(phi),
                              (r / 2) * sin(phi),
                              1,
                              0]]).T
 
-    g_2 = sympy.Matrix([[r / (2 * d),
+    g_2 = Matrix([[r / (2 * d),
                              (r / 2) * cos(phi),
                              (r / 2) * sin(phi),
                              0,
                              1]]).T
 
     print()
-    res = sympy.simplify(g_2.jacobian(q) * g_1 - g_1.jacobian(q) * g_2)
-    sympy.pprint(res)
+    res = simplify(g_2.jacobian(q) * g_1 - g_1.jacobian(q) * g_2)
+    pprint(res)
 
 
 def test_four_mecanum_wheel_robot_1():

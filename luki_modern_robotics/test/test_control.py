@@ -22,7 +22,7 @@ def test_characteristic_equation_2():
     # 1s^3 + 1s^2 + 2s + 3 = 0
     np.testing.assert_array_almost_equal(poly, [1, 1, 2, 3])
     roots = np.roots(poly)
-    stable = all([comp.real < 0 for comp in roots])
+    stable = all(comp.real < 0 for comp in roots)
     assert not stable
 
 
@@ -68,9 +68,9 @@ def test_ki_max():
 
 
 def test_kd():
-    s = -4
-    M = 1
-    b = 2
+    # s = -4
+    # M = 1
+    # b = 2
     # (b + K_d)/M * s^2 = 0
     # (2 + K_d)/1 * 16 = 0
 
