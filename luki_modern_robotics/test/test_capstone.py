@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 import pytest
-from ..capstone.mobile_manipulation import NextState
+from ..capstone.mobile_manipulation import NextState, TrajectoryGenerator, T_se_initial, T_sc_initial, T_sc_goal
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -27,3 +27,9 @@ def test_NextState(name, u):
         current_state = np.r_[current_config, gripper_state]
         all_states = np.vstack([all_states, current_state])
     np.savetxt(os.path.join(DIR_PATH, f"output-{name}.csv"), all_states, delimiter=",")
+
+
+def test_TrajectoryGenerator():
+    traj = TrajectoryGenerator(T_se_initial(), T_sc_initial(), T_sc_goal())
+
+    np.savetxt(os.path.join(DIR_PATH, "output-trajectory.csv"), traj, delimiter=",")
