@@ -26,3 +26,5 @@ six==1.16.0
 sympy==1.12
 tomlkit==0.11.8
 wrapt==1.15.0
+approvaltests==10.2.0
+mypy==1.8.0

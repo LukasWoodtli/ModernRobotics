@@ -30,7 +30,7 @@ def rot2(phi):
     return np.array([[cos(phi), -sin(phi)], [sin(phi), cos(phi)]])
 
 
-def is_rotation_matrix(mat: np.array):
+def is_rotation_matrix(mat: np.ndarray):
     """
     Check if the given array is an rotation matrix.
     :param mat: The matrix to check.

@@ -19,6 +19,9 @@ jobs:
           working_directory: luki_modern_robotics
           command: pylint **/*.py
       - run:
+          name: Run mypy
+          command: mypy luki_modern_robotics --explicit-package-bases
+      - run:
           name: Collect test coverage
           working_directory: luki_modern_robotics
           command: |

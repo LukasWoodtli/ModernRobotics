@@ -2,7 +2,11 @@ import os
 
 import numpy as np
 import pytest
-from ..capstone.mobile_manipulation import NextState, TrajectoryGenerator, T_se_initial, T_sc_initial, T_sc_goal
+from approvaltests import verify_file, Options
+from approvaltests.core import Comparator
+
+from ..capstone.mobile_manipulation import NextState, TrajectoryGenerator, T_se_initial, T_sc_initial, T_sc_goal, \
+    calc_J_e, calc_V, FeedbackControl, to_SE3, main
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -30,6 +34,100 @@ def test_NextState(name, u):
 
 
 def test_TrajectoryGenerator():
-    traj = TrajectoryGenerator(T_se_initial(), T_sc_initial(), T_sc_goal())
+    T_se_ini = T_se_initial()
+    np.testing.assert_array_almost_equal(T_se_ini, [[1., 0., 0., 0.1992], [0., 1., 0., 0.], [0., 0., 1., 0.7535],
+                                                    [0., 0., 0., 1.]])
+    T_sc_ini = T_sc_initial()
+    np.testing.assert_array_almost_equal(T_sc_ini, [[1, 0, 0, 1], [0, 1, 0, 0], [0, 0, 1, 0.025], [0, 0, 0, 1]])
+    T_sc_gl = T_sc_goal()
+    np.testing.assert_array_almost_equal(T_sc_gl, [[0, 1, 0, 0], [-1, 0, 0, -1], [0, 0, 1, 0.025], [0, 0, 0, 1]])
+    traj = TrajectoryGenerator(T_se_ini, T_sc_ini, T_sc_gl)
 
     np.savetxt(os.path.join(DIR_PATH, "output-trajectory.csv"), traj, delimiter=",")
+
+
+X = np.array([
+    [0.170, 0, 0.985, 0.387],
+    [0, 1, 0, 0],
+    [-0.985, 0, 0.170, 0.570],
+    [0, 0, 0, 1],
+])
+X_d = np.array([
+    [0, 0, 1, 0.5],
+    [0, 1, 0, 0],
+    [-1, 0, 0, 0.5],
+    [0, 0, 0, 1]
+])
+X_d_next = np.array([
+    [0, 0, 1, 0.6],
+    [0, 1, 0, 0],
+    [-1, 0, 0, 0.3],
+    [0, 0, 0, 1]
+
+])
+
+config = np.array([0, 0, 0, 0, 0, 0.2, -1.6, 0])
+
+
+def test_calc_V():
+    integral_X_err = np.zeros(6)
+    res, integral_X_err, X_err = calc_V(X, X_d, X_d_next, 0, 0, integral_X_err)
+    expected_V = np.array([0, 0, 0, 21.4, 0, 6.45])
+    np.testing.assert_array_almost_equal(res, expected_V)
+    np.testing.assert_array_almost_equal(integral_X_err, [0., 0.001709, 0., 0.000795, 0., 0.001067])
+    np.testing.assert_array_almost_equal(X_err, [0., 0.170855, 0., 0.079454, 0., 0.106694])
+
+
+def test_calc_J_e():
+    J_e = calc_J_e(config)
+    expected = np.array(
+        [[-0.98544973, 0, 0., 0., 0., 0.03039537, -0.03039537, -0.03039537, 0.03039537],
+         [0., -1., -1., -1., 0., 0., 0., 0., 0.],
+         [0.16996714, 0., 0., 0., 1., -0.00524249, 0.00524249, 0.00524249, -0.00524249],
+         [0., -0.24000297, -0.21365806, -0.2176, 0., 0.00201836, 0.00201836, 0.00201836, 0.00201836],
+         [0.2206135, 0., 0., 0., 0., -0.01867964, 0.01867964, -0.00507036, 0.00507036],
+         [0., -0.28768714, -0.13494244, 0., 0., 0.01170222, 0.01170222, 0.01170222, 0.01170222]])
+
+    np.testing.assert_array_almost_equal(J_e, expected, decimal=3)
+
+
+def test_calc_FeedbackControl():
+    integral_X_err = np.zeros(6)
+    controls, integral_X_err, X_err = FeedbackControl(X, X_d, X_d_next, config, 0, 0, integral_X_err)
+    expected = np.array([-1.847390e-13, -6.526204e+02, 1.398037e+03, -7.454164e+02,
+                         7.707381e-14, 1.571068e+02, 1.571068e+02, 1.571068e+02,
+                         1.571068e+02])
+    np.testing.assert_array_almost_equal(controls,
+                                         expected, decimal=3)
+    np.testing.assert_array_almost_equal(integral_X_err,
+                                         [0., 0.001709, 0., 0.000795, 0., 0.001067])
+    np.testing.assert_array_almost_equal(X_err,
+                                         [0., 0.17, 0., 0.08, 0., 0.11], decimal=2)
+
+
+def test_to_SE3():
+    w = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    t = to_SE3(w)
+    np.testing.assert_array_equal(t, np.array([[1, 2, 3, 10],
+                                               [4, 5, 6, 11],
+                                               [7, 8, 9, 12],
+                                               [0, 0, 0, 1]]))
+
+
+class NumpyComparator(Comparator):  # pylint: disable=too-few-public-methods
+
+    def __init__(self):
+        pass
+
+    def compare(self, received_path: str, approved_path: str) -> bool:
+        received = np.loadtxt(received_path, delimiter=',')
+        approved = np.loadtxt(approved_path, delimiter=',')
+        return np.allclose(received, approved)
+
+
+def test_main():
+    main()
+
+    output_file = os.path.join(os.path.dirname(__file__), '..', 'capstone', 'output', 'output-trajectory.csv')
+
+    verify_file(output_file, options=Options().with_comparator(NumpyComparator()))
