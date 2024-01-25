@@ -89,6 +89,104 @@ class Scene:
             [0, 0, 0, 1]])
 
 
+class Planner:  # pylint: disable=too-few-public-methods
+    def __init__(self, T_s_e_initial, scene: Scene, delta_t):
+        self.T_s_e_initial = T_s_e_initial
+        self.T_sc_initial = scene.T_sc_initial()
+        self.T_sc_goal = scene.T_sc_goal()
+        self.delta_t = delta_t
+
+    def trajectory_generator(self):
+        """Generate trajectory for the pick and place task.
+        Intermediate positions (standoff, picking, placing) are calculated with the given positions.
+        :param T_se_initial: the initial position of the end effector
+        :param T_sc_initial: the initial position of the cube to be picked
+        :param T_sc_final: the goal position of the cube
+        :return: The trajectory for the given task"""
+
+        waypoints = self._generate_waypoints()
+        traj = []
+        for i in range(len(waypoints) - 1):
+            waypoint_from, _, _ = waypoints[i]
+            waypoint_to, gripper, time = waypoints[i + 1]
+            tr = self._generate_trajectory(waypoint_from,
+                                      waypoint_to,
+                                      gripper,
+                                      time)
+            traj.extend(tr)
+
+        return traj
+
+    def _generate_waypoints(self):
+        """Generate all the main positions of the end-effector including gripper state and times required for the step"""
+        GRIPPER_OPEN = 0
+        GRIPPER_CLOSED = 1
+        _ = "unused"
+
+        standoff_1 = self._standoff_from_cube(self.T_sc_initial)
+        grip_1 = self._grasp_from_cube(self.T_sc_initial)
+        standoff_2 = self._standoff_from_cube(self.T_sc_goal)
+        grip_2 = self._grasp_from_cube(self.T_sc_goal)
+
+        waypoints = []  # (config, gripper, time_in_s)
+
+        waypoints.append((self.T_s_e_initial, GRIPPER_OPEN, _))
+        waypoints.append((standoff_1, GRIPPER_OPEN, 5))
+        waypoints.append((grip_1, GRIPPER_OPEN, 2))
+        waypoints.append((grip_1, GRIPPER_CLOSED, 1))
+        waypoints.append((standoff_1, GRIPPER_CLOSED, 1))
+        waypoints.append((standoff_2, GRIPPER_CLOSED, 5))
+        waypoints.append((grip_2, GRIPPER_CLOSED, 2))
+        waypoints.append((grip_2, GRIPPER_OPEN, 1))
+        waypoints.append((standoff_2, GRIPPER_OPEN, 1))
+
+        return waypoints
+
+
+    def _generate_trajectory(self, X_from, X_to, gripper, time_in_s):
+        """Generate trajectory from one position to another with a given time in seconds.
+        Also handle the given gripper state."""
+        N = time_in_s / self.delta_t
+        trajectory = ScrewTrajectory(X_from, X_to, time_in_s, N, 3)
+
+        t = []
+        # flat list for serialization to csv
+        for traj in trajectory:
+            r = traj[:-1, :-1]
+            p = traj[:-1, -1]
+            s = np.concatenate((r.flatten(), p.flatten(), np.array([gripper])))
+            t.append(s)
+
+        return t
+
+    @staticmethod
+    def _standoff_from_cube(cube_conf):
+        """End effector standoff configuration, relative to cube frame `{c}`"""
+        theta = 2
+        d = 0.2
+        standoff = np.array([
+            [np.cos(theta), 0, np.sin(theta), 0],
+            [0, 1, 0, 0],
+            [-np.sin(theta), 0, np.cos(theta), d],
+            [0, 0, 0, 1]
+        ])
+
+        return cube_conf @ standoff
+
+    @staticmethod
+    def _grasp_from_cube(cube_config):
+        """End effector configuration for grasping cube, relative to cube frame `{c}`"""
+        theta = 2
+
+        grasp = np.array([
+            [np.cos(theta), 0, np.sin(theta), 0],
+            [0, 1, 0, 0],
+            [-np.sin(theta), 0, np.cos(theta), -0.0215],
+            [0, 0, 0, 1]])
+
+        return cube_config @ grasp
+
+
 class Robot:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self):
@@ -107,33 +205,6 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         # I gain value
         self.k_i = 0.01
         self.delta_t = 0.01  # seconds
-
-    @staticmethod
-    def standoff_from_cube(cube_conf):
-        """End effector standoff configuration, relative to cube frame `{c}`"""
-        theta = 2
-        d = 0.2
-        standoff = np.array([
-            [np.cos(theta), 0, np.sin(theta), 0],
-            [0, 1, 0, 0],
-            [-np.sin(theta), 0, np.cos(theta), d],
-            [0, 0, 0, 1]
-        ])
-
-        return cube_conf @ standoff
-
-    @staticmethod
-    def grasp_from_cube(cube_config):
-        """End effector configuration for grasping cube, relative to cube frame `{c}`"""
-        theta = 2
-
-        grasp = np.array([
-            [np.cos(theta), 0, np.sin(theta), 0],
-            [0, 1, 0, 0],
-            [-np.sin(theta), 0, np.cos(theta), -0.0215],
-            [0, 0, 0, 1]])
-
-        return cube_config @ grasp
 
     @staticmethod
     def euler_step(angles, speeds, delta_t):
@@ -215,68 +286,6 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         # return updated estimate of chassis configuration
         return q_k + delta_q
 
-    def generate_waypoints(self, T_se_initial, T_sc_initial, T_sc_goal):
-        """Generate all the main positions of the end-effector including gripper state and times required for the step"""
-        GRIPPER_OPEN = 0
-        GRIPPER_CLOSED = 1
-        _ = "unused"
-
-        standoff_1 = self.standoff_from_cube(T_sc_initial)
-        grip_1 = self.grasp_from_cube(T_sc_initial)
-        standoff_2 = self.standoff_from_cube(T_sc_goal)
-        grip_2 = self.grasp_from_cube(T_sc_goal)
-
-        waypoints = []  # (config, gripper, time_in_s)
-
-        waypoints.append((T_se_initial, GRIPPER_OPEN, _))
-        waypoints.append((standoff_1, GRIPPER_OPEN, 5))
-        waypoints.append((grip_1, GRIPPER_OPEN, 2))
-        waypoints.append((grip_1, GRIPPER_CLOSED, 1))
-        waypoints.append((standoff_1, GRIPPER_CLOSED, 1))
-        waypoints.append((standoff_2, GRIPPER_CLOSED, 5))
-        waypoints.append((grip_2, GRIPPER_CLOSED, 2))
-        waypoints.append((grip_2, GRIPPER_OPEN, 1))
-        waypoints.append((standoff_2, GRIPPER_OPEN, 1))
-
-        return waypoints
-
-
-    def generate_trajectory(self, X_from, X_to, gripper, time_in_s):
-        """Generate trajectory from one position to another with a given time in seconds.
-        Also handle the given gripper state."""
-        N = time_in_s / self.delta_t
-        trajectory = ScrewTrajectory(X_from, X_to, time_in_s, N, 3)
-
-        t = []
-        # flat list for serialization to csv
-        for traj in trajectory:
-            r = traj[:-1, :-1]
-            p = traj[:-1, -1]
-            s = np.concatenate((r.flatten(), p.flatten(), np.array([gripper])))
-            t.append(s)
-
-        return t
-
-    def TrajectoryGenerator(self, T_se_initial, T_sc_initial, T_sc_final):
-        """Generate trajectory for the pick and place task.
-        Intermediate positions (standoff, picking, placing) are calculated with the given positions.
-        :param T_se_initial: the initial position of the end effector
-        :param T_sc_initial: the initial position of the cube to be picked
-        :param T_sc_final: the goal position of the cube
-        :return: The trajectory for the given task"""
-
-        waypoints = self.generate_waypoints(T_se_initial, T_sc_initial, T_sc_final)
-        traj = []
-        for i in range(len(waypoints) - 1):
-            waypoint_from, _, _ = waypoints[i]
-            waypoint_to, gripper, time = waypoints[i + 1]
-            tr = self.generate_trajectory(waypoint_from,
-                                      waypoint_to,
-                                      gripper,
-                                      time)
-            traj.extend(tr)
-
-        return traj
 
     # Control #
 
@@ -381,7 +390,8 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         all_X_err = []
 
         # First generate a reference trajectory using TrajectoryGenerator and set the initial robot configuration
-        trajectory = self.TrajectoryGenerator(self.initial_planned_T_s_e, self.scene.T_sc_initial(), self.scene.T_sc_goal())
+        planner = Planner(self.initial_planned_T_s_e, self.scene, self.delta_t)
+        trajectory = planner.trajectory_generator()
 
         X = self.end_effector_from_config(config)
 
