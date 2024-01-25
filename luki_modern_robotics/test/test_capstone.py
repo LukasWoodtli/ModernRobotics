@@ -6,7 +6,7 @@ from approvaltests import verify_file, Options
 from approvaltests.core import Comparator
 from approvaltests.namer import NamerFactory
 
-from ..capstone.mobile_manipulation import Robot, RobotConfiguration
+from ..capstone.mobile_manipulation import Robot, RobotConfiguration, Controller
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -35,6 +35,7 @@ testdata = [
 @pytest.mark.parametrize("name,u", testdata)
 def test_NextState(name, u):
     robot = Robot()
+    controller = Controller(robot.robot_geometry, k_p=robot.k_p, k_i=robot.k_i, delta_t=robot.delta_t)
     steps = 100
     current_config = RobotConfiguration(np.zeros(13))
     theta_dot = np.zeros(5)
@@ -43,7 +44,7 @@ def test_NextState(name, u):
     current_config.set_gripper(gripper_state)
     all_states = current_config.as_array()
     for _ in range(steps):
-        current_config = robot.NextState(current_config, speeds, 5)
+        current_config = controller._next_state(current_config, speeds, 5)  # pylint: disable=protected-access
         current_config.set_gripper(gripper_state)
         all_states = np.vstack([all_states, current_config.as_array()])
     output_file = os.path.join(DIR_PATH, f"output-{name}.csv")
@@ -80,16 +81,18 @@ def test_calc_V():
     robot = Robot()
     robot.k_p = 0
     robot.k_i = 0
-    res, X_err = robot.calc_V(X, X_d, X_d_next)
+    controller = Controller(robot_geometry=robot.robot_geometry, k_p=robot.k_p, k_i=robot.k_i, delta_t=robot.delta_t)
+    res, X_err = controller._calc_V(X, X_d, X_d_next)  # pylint: disable=protected-access
     expected_V = np.array([0, 0, 0, 21.4, 0, 6.45])
     np.testing.assert_array_almost_equal(res, expected_V)
-    np.testing.assert_array_almost_equal(robot.integral_X_err, [0., 0.001709, 0., 0.000795, 0., 0.001067])
+    np.testing.assert_array_almost_equal(controller.integral_X_err, [0., 0.001709, 0., 0.000795, 0., 0.001067])
     np.testing.assert_array_almost_equal(X_err, [0., 0.170855, 0., 0.079454, 0., 0.106694])
 
 
 def test_calc_J_e():
     robot = Robot()
-    J_e = robot.calc_J_e(config)
+    controller = Controller(robot_geometry=robot.robot_geometry, k_p=robot.k_p, k_i=robot.k_i, delta_t=robot.delta_t)
+    J_e = controller._calc_J_e(config)  # pylint: disable=protected-access
     expected = np.array(
         [[-0.98544973, 0, 0., 0., 0., 0.03039537, -0.03039537, -0.03039537, 0.03039537],
          [0., -1., -1., -1., 0., 0., 0., 0., 0.],
@@ -105,13 +108,14 @@ def test_calc_FeedbackControl():
     robot = Robot()
     robot.k_p = 0
     robot.k_i = 0
-    controls, X_err = robot.FeedbackControl(X, X_d, X_d_next, config)
+    controller = Controller(robot_geometry=robot.robot_geometry, k_p=robot.k_p, k_i=robot.k_i, delta_t=robot.delta_t)
+    controls, X_err = controller._feedback_control_step(X, X_d, X_d_next, config)  # pylint: disable=protected-access
     expected = np.array([-1.847390e-13, -6.526204e+02, 1.398037e+03, -7.454164e+02,
                          7.707381e-14, 1.571068e+02, 1.571068e+02, 1.571068e+02,
                          1.571068e+02])
     np.testing.assert_array_almost_equal(controls,
                                          expected, decimal=3)
-    np.testing.assert_array_almost_equal(robot.integral_X_err,
+    np.testing.assert_array_almost_equal(controller.integral_X_err,
                                          [0., 0.001709, 0., 0.000795, 0., 0.001067])
     np.testing.assert_array_almost_equal(X_err,
                                          [0., 0.17, 0., 0.08, 0., 0.11], decimal=2)
@@ -119,7 +123,7 @@ def test_calc_FeedbackControl():
 
 def test_to_SE3():
     w = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    t = Robot.to_SE3(w)
+    t = Controller._to_SE3(w)  # pylint: disable=protected-access
     np.testing.assert_array_equal(t, np.array([[1, 2, 3, 10],
                                                [4, 5, 6, 11],
                                                [7, 8, 9, 12],

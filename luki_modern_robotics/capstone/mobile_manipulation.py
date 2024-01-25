@@ -36,6 +36,21 @@ class RobotGeometry:
             [0, 0, 1, 0.0026],
             [0, 0, 0, 1]])
 
+    M_0_e = np.array([
+        [1, 0, 0, 0.033],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0.6546],
+        [0, 0, 0, 1]
+    ])
+
+    Blist = np.array([
+        [0, 0, 1, 0, 0.033, 0],
+        [0, -1, 0, -0.5076, 0, 0],
+        [0, -1, 0, -0.3526, 0, 0],
+        [0, -1, 0, -0.2176, 0, 0],
+        [0, 0, 1, 0, 0, 0],
+    ]).T
+
 
 class RobotConfiguration:
     def __init__(self, array: np.ndarray):
@@ -186,32 +201,20 @@ class Planner:  # pylint: disable=too-few-public-methods
 
         return cube_config @ grasp
 
-
-class Robot:  # pylint: disable=too-many-instance-attributes
-
-    def __init__(self):
-        self.robot_geometry = RobotGeometry()
+class Controller:  # pylint: disable=too-few-public-methods
+    def __init__(self, robot_geometry, k_p, k_i, delta_t):
+        self.robot_geometry = robot_geometry
+        self.k_p = k_p
+        self.k_i =  k_i
+        self.delta_t = delta_t
         self.integral_X_err = np.zeros(6)
-        self.scene = Scene()
-        self.initial_planned_T_s_e = np.array([[0,0,1,0],
-                                            [0,1,0,0],
-                                            [-1,0,0,0.5],
-                                            [0,0,0,1]
-                                            ])
-
-        self.initial_config = RobotConfiguration(np.array([np.pi / 4, -0.5, 0.5, 1, -0.2, 0.2, -1.6, 0, 0, 0, 0, 0, 0]))
-        # P gain value
-        self.k_p = 2
-        # I gain value
-        self.k_i = 0.01
-        self.delta_t = 0.01  # seconds
 
     @staticmethod
-    def euler_step(angles, speeds, delta_t):
+    def _euler_step(angles, speeds, delta_t):
         """Calculate new angles of joints and wheels for a time step"""
         return angles + speeds * delta_t
 
-    def NextState(self, current_configuration: RobotConfiguration,
+    def _next_state(self, current_configuration: RobotConfiguration,
                   wheel_and_joint_controls,
                   speed_max: float) -> RobotConfiguration:
         """
@@ -233,11 +236,11 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         controls = np.clip(wheel_and_joint_controls, -speed_max, speed_max)
 
         # angles
-        new_angles = Robot.euler_step(current_configuration.get_angles(), controls, self.delta_t)
+        new_angles = self._euler_step(current_configuration.get_angles(), controls, self.delta_t)
         assert len(new_angles) == 9
         # config
         current_config = current_configuration.get_chassis_config()
-        new_configuration = self.odometry(current_config, controls[5:] * self.delta_t)
+        new_configuration = self._odometry(current_config, controls[5:] * self.delta_t)
         assert len(new_configuration) == 3
 
         default_gripper = 0.0
@@ -245,7 +248,7 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         assert len(new_state) == 13
         return RobotConfiguration(new_state)
 
-    def odometry(self, q_k, delta_theta):
+    def _odometry(self, q_k, delta_theta):
         """Calculate odometry of mobile base.
         :param q_k: The current chassis config
         :param delta_theta: The wheel angle step
@@ -286,28 +289,10 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         # return updated estimate of chassis configuration
         return q_k + delta_q
 
-
-    # Control #
-
-    M_0_e = np.array([
-        [1, 0, 0, 0.033],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0.6546],
-        [0, 0, 0, 1]
-    ])
-
-    Blist = np.array([
-        [0, 0, 1, 0, 0.033, 0],
-        [0, -1, 0, -0.5076, 0, 0],
-        [0, -1, 0, -0.3526, 0, 0],
-        [0, -1, 0, -0.2176, 0, 0],
-        [0, 0, 1, 0, 0, 0],
-    ]).T
-
-    def calc_J_base(self, config: RobotConfiguration):
+    def _calc_J_base(self, config: RobotConfiguration):
         # J_base
         theta = config.get_theta()
-        T_0_e = FKinBody(self.M_0_e, self.Blist, theta)
+        T_0_e = FKinBody(self.robot_geometry.M_0_e, self.robot_geometry.Blist, theta)
         Adj_T_e_b = Adjoint(TransInv(T_0_e))
         r = self.robot_geometry.r
         l = self.robot_geometry.l
@@ -322,19 +307,19 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         J_base = Adj_T_e_b @ F_6
         return J_base
 
-    def calc_J_arm(self, config: RobotConfiguration):
+    def _calc_J_arm(self, config: RobotConfiguration):
         theta = config.get_theta()
         # J_arm (J_b)
-        J_arm = JacobianBody(self.Blist, theta)
+        J_arm = JacobianBody(self.robot_geometry.Blist, theta)
         return J_arm
 
-    def calc_J_e(self, config: RobotConfiguration):
-        J_base = self.calc_J_base(config)
-        J_arm = self.calc_J_arm(config)
+    def _calc_J_e(self, config: RobotConfiguration):
+        J_base = self._calc_J_base(config)
+        J_arm = self._calc_J_arm(config)
         J_e = np.concatenate((J_arm, J_base), axis=1)
         return J_e
 
-    def calc_V(self, X, X_d, X_d_next):
+    def _calc_V(self, X, X_d, X_d_next):
         """The PD control algorithm for the robot.
         :param X: Current configuration of the end-effector (also written T_se)
         :param X_d: Desired configuration of the end-effector (also written T_se_d)
@@ -357,9 +342,9 @@ class Robot:  # pylint: disable=too-many-instance-attributes
 
         return V, X_err
 
-    def FeedbackControl(self, X, X_d, X_d_next, config: RobotConfiguration):  # pylint: disable=too-many-arguments
-        V, X_err = self.calc_V(X, X_d, X_d_next)
-        J_e = self.calc_J_e(config)
+    def _feedback_control_step(self, X, X_d, X_d_next, config: RobotConfiguration):  # pylint: disable=too-many-arguments
+        V, X_err = self._calc_V(X, X_d, X_d_next)
+        J_e = self._calc_J_e(config)
         matrix_inv = scipy.linalg.pinv(J_e, atol=0.0001)
         J_e_pinv = matrix_inv
         controls = J_e_pinv @ V
@@ -367,7 +352,7 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         return controls, X_err
 
     @staticmethod
-    def to_SE3(waypoint):
+    def _to_SE3(waypoint):
         assert len(waypoint) == 12
         r = waypoint[0:9].reshape((3, 3))
         p = waypoint[9:12]
@@ -377,31 +362,25 @@ class Robot:  # pylint: disable=too-many-instance-attributes
 
         return t
 
-    def end_effector_from_config(self, config: RobotConfiguration):
+    def _end_effector_from_config(self, config: RobotConfiguration):
         T_s_b = self.robot_geometry.T_sb(config.get_chassis_config())
         theta = config.get_theta()
-        T_0_e = FKinBody(self.M_0_e, self.Blist, theta)
+        T_0_e = FKinBody(self.robot_geometry.M_0_e, self.robot_geometry.Blist, theta)
         T_s_e = T_s_b @ self.robot_geometry.T_b_0() @ T_0_e
         return T_s_e
 
-    def run(self) -> None:  # pylint: disable=too-many-locals
-        config: RobotConfiguration = self.initial_config
+
+    def controller_loop(self, config, trajectory):
         all_configurations = np.array([config.as_array()])
         all_X_err = []
-
-        # First generate a reference trajectory using TrajectoryGenerator and set the initial robot configuration
-        planner = Planner(self.initial_planned_T_s_e, self.scene, self.delta_t)
-        trajectory = planner.trajectory_generator()
-
-        X = self.end_effector_from_config(config)
-
+        X = self._end_effector_from_config(config)
         # Loops through the reference trajectory
         for i in range(len(trajectory) - 1):
             # Calculate the control law and generate the wheel and joint controls
-            X_d = self.to_SE3(trajectory[i][:12])
-            X_d_next = self.to_SE3(trajectory[i + 1][:12])
+            X_d = self._to_SE3(trajectory[i][:12])
+            X_d_next = self._to_SE3(trajectory[i + 1][:12])
 
-            controls, X_err = self. FeedbackControl(X, X_d, X_d_next, config)
+            controls, X_err = self._feedback_control_step(X, X_d, X_d_next, config)
 
             # store every X_err 6-vector, so you can later plot the evolution of the error over time.
             all_X_err.append(X_err)
@@ -410,14 +389,48 @@ class Robot:  # pylint: disable=too-many-instance-attributes
             assert gripper in (0.0, 1.0)
             # Use controls, configuration, and timestep to calculate the new configuration
             speed_max = 10
-            config = self.NextState(config,
-                               controls,
-                               speed_max)
+            config = self._next_state(config,
+                                    controls,
+                                    speed_max)
             config.set_gripper(gripper)
 
             # store configuration for later animation
             all_configurations = np.vstack([all_configurations, config.as_array()])
-            X = self.end_effector_from_config(config)
+            X = self._end_effector_from_config(config)
+        return all_X_err, all_configurations
+
+
+class Robot:    # pylint: disable=too-few-public-methods
+
+    def __init__(self):
+        self.robot_geometry = RobotGeometry()
+        self.scene = Scene()
+        self.initial_planned_T_s_e = np.array([[0,0,1,0],
+                                            [0,1,0,0],
+                                            [-1,0,0,0.5],
+                                            [0,0,0,1]
+                                            ])
+
+        self.initial_config = RobotConfiguration(np.array([np.pi / 4, -0.5, 0.5, 1, -0.2, 0.2, -1.6, 0, 0, 0, 0, 0, 0]))
+        # P gain value
+        self.k_p = 2
+        # I gain value
+        self.k_i = 0.01
+        self.delta_t = 0.01  # seconds
+
+    def run(self) -> None:  # pylint: disable=too-many-locals
+        config: RobotConfiguration = self.initial_config
+
+        # First generate a reference trajectory using TrajectoryGenerator and set the initial robot configuration
+        planner = Planner(self.initial_planned_T_s_e, self.scene, self.delta_t)
+        trajectory = planner.trajectory_generator()
+
+        controller = Controller(self.robot_geometry,
+                                self.k_p,
+                                self.k_i,
+                                self.delta_t
+                                )
+        all_X_err, all_configurations = controller.controller_loop(config, trajectory)
 
         # Once the program has completed all iterations of the loop:
         # - write out the csv file of configurations: Load the csv file into the CSV Mobile Manipulation youBot scene (Scene 6) to see the results
@@ -427,7 +440,6 @@ class Robot:  # pylint: disable=too-many-instance-attributes
         np.savetxt(os.path.join(output_dir, "output-trajectory.csv"), all_configurations, delimiter=",")
         # - Your program should also generate a file with the log of the X_err 6-vector as a function of time, suitable for plotting
         np.savetxt(os.path.join(output_dir, "x_err.csv"), all_X_err, delimiter=",")
-
 
 if __name__ == '__main__':
     robot = Robot()
