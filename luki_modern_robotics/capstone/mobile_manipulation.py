@@ -84,9 +84,15 @@ class Robot:
         self.robot_geometry = RobotGeometry()
         self.integral_X_err = np.zeros(6)
         self.scene = Scene()
-        self.initial_config = np.array([np.pi / 6, -0.1, 0.1, 0, -0.2, 0.2, -1.6, 0, 0, 0, 0, 0, 0])
+        self.initial_planned_T_s_e = np.array([[0,0,1,0],
+                                            [0,1,0,0],
+                                            [-1,0,0,0.5],
+                                            [0,0,0,1]
+                                            ])
+
+        self.initial_config = np.array([np.pi / 4, -0.5, 0.5, 1, -0.2, 0.2, -1.6, 0, 0, 0, 0, 0, 0])
         # P gain value
-        self.k_p = 1
+        self.k_p = 2
         # I gain value
         self.k_i = 0.01
         self.delta_t = 0.01  # seconds
@@ -357,26 +363,16 @@ class Robot:
         T_s_e = T_s_b @ self.robot_geometry.T_b_0() @ T_0_e
         return T_s_e
 
-    def end_effector_from_initial_config(self, config):
-        """TODO replace this with end_effector_from_config"""
-        theta = config[3:8]
-        T_0_e = FKinBody(self.M_0_e, self.Blist, theta)
-        X = self.robot_geometry.T_sb(np.array([0, 0, 0])) @ self.robot_geometry.T_b_0() @ T_0_e
-        return X
-
     def main(self):  # pylint: disable=too-many-locals
-        # First generate a reference trajectory using TrajectoryGenerator and set the initial robot configuration
-        # 13-vector: chassis phi, chassis x, chassis y, J1, J2, J3, J4, J5, W1, W2, W3, W4, gripper state
         config = self.initial_config
-
-        # TODO use: X = self.end_effector_from_config(config)  pylint: disable=fixme
-        X = self.end_effector_from_initial_config(config)
-
-        trajectory = self.TrajectoryGenerator(X, self.scene.T_sc_initial(), self.scene.T_sc_goal())
         all_configurations = np.array([config])
-
         all_X_err = []
 
+        # First generate a reference trajectory using TrajectoryGenerator and set the initial robot configuration
+        trajectory = self.TrajectoryGenerator(self.initial_planned_T_s_e, self.scene.T_sc_initial(), self.scene.T_sc_goal())
+
+        X = self.end_effector_from_config(config[:-1])
+        
         # Loops through the reference trajectory
         for i in range(len(trajectory) - 1):
             # Calculate the control law and generate the wheel and joint controls
