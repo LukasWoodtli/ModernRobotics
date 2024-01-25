@@ -37,17 +37,28 @@ class RobotGeometry:
             [0, 0, 0, 1]])
 
 
+class RobotConfiguration:
+    def __init__(self, array: np.ndarray):
+        self.configuration = array
 
-def _get_chassis_config(state):
-    """Get the chassis configuration from the state"""
-    assert len(state) == 12
-    return state[:3]
+    def as_array(self):
+        return self.configuration
 
+    def set_gripper(self, gripper):
+        self.configuration[12] = gripper
 
-def _get_angles(state):
-    """Get all the joint and wheel angles from the state"""
-    assert len(state) == 12
-    return state[3:]
+    def get_chassis_config(self):
+        """Get the chassis configuration from the state"""
+        assert len(self.configuration) == 13
+        return self.configuration[:3]
+
+    def get_theta(self):
+        return self.configuration[3:8]
+
+    def get_angles(self):
+        """Get all the joint and wheel angles from the state"""
+        assert len(self.configuration) == 13
+        return self.configuration[3:12]
 
 
 # Frames:
@@ -78,7 +89,7 @@ class Scene:
             [0, 0, 0, 1]])
 
 
-class Robot:
+class Robot:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self):
         self.robot_geometry = RobotGeometry()
@@ -90,7 +101,7 @@ class Robot:
                                             [0,0,0,1]
                                             ])
 
-        self.initial_config = np.array([np.pi / 4, -0.5, 0.5, 1, -0.2, 0.2, -1.6, 0, 0, 0, 0, 0, 0])
+        self.initial_config = RobotConfiguration(np.array([np.pi / 4, -0.5, 0.5, 1, -0.2, 0.2, -1.6, 0, 0, 0, 0, 0, 0]))
         # P gain value
         self.k_p = 2
         # I gain value
@@ -129,9 +140,9 @@ class Robot:
         """Calculate new angles of joints and wheels for a time step"""
         return angles + speeds * delta_t
 
-    def NextState(self, current_configuration,
+    def NextState(self, current_configuration: RobotConfiguration,
                   wheel_and_joint_controls,
-                  speed_max: float):
+                  speed_max: float) -> RobotConfiguration:
         """
         Calculates the next state of the robot with: euler step for the angles and odometry for the chassis configuration
         :param current_configuration: 12-vector:
@@ -145,22 +156,23 @@ class Robot:
         :param speed_max: maximum speed of wheels and joints
         """
 
-        assert len(current_configuration) == 12
+        assert len(current_configuration.as_array()) == 13
         assert len(wheel_and_joint_controls) == 9
         # limit speed controls
         controls = np.clip(wheel_and_joint_controls, -speed_max, speed_max)
 
         # angles
-        new_angles = Robot.euler_step(_get_angles(current_configuration), controls, self.delta_t)
+        new_angles = Robot.euler_step(current_configuration.get_angles(), controls, self.delta_t)
         assert len(new_angles) == 9
         # config
-        current_config = _get_chassis_config(current_configuration)
+        current_config = current_configuration.get_chassis_config()
         new_configuration = self.odometry(current_config, controls[5:] * self.delta_t)
         assert len(new_configuration) == 3
 
-        new_state = np.r_[new_configuration, new_angles]
-        assert len(new_state) == 12
-        return new_state
+        default_gripper = 0.0
+        new_state = np.r_[new_configuration, new_angles, [default_gripper]]
+        assert len(new_state) == 13
+        return RobotConfiguration(new_state)
 
     def odometry(self, q_k, delta_theta):
         """Calculate odometry of mobile base.
@@ -283,9 +295,9 @@ class Robot:
         [0, 0, 1, 0, 0, 0],
     ]).T
 
-    def calc_J_base(self, config):
+    def calc_J_base(self, config: RobotConfiguration):
         # J_base
-        theta = config[3:8]
+        theta = config.get_theta()
         T_0_e = FKinBody(self.M_0_e, self.Blist, theta)
         Adj_T_e_b = Adjoint(TransInv(T_0_e))
         r = self.robot_geometry.r
@@ -301,13 +313,13 @@ class Robot:
         J_base = Adj_T_e_b @ F_6
         return J_base
 
-    def calc_J_arm(self, config):
-        theta = config[3:8]
+    def calc_J_arm(self, config: RobotConfiguration):
+        theta = config.get_theta()
         # J_arm (J_b)
         J_arm = JacobianBody(self.Blist, theta)
         return J_arm
 
-    def calc_J_e(self, config):
+    def calc_J_e(self, config: RobotConfiguration):
         J_base = self.calc_J_base(config)
         J_arm = self.calc_J_arm(config)
         J_e = np.concatenate((J_arm, J_base), axis=1)
@@ -336,7 +348,7 @@ class Robot:
 
         return V, X_err
 
-    def FeedbackControl(self, X, X_d, X_d_next, config):  # pylint: disable=too-many-arguments
+    def FeedbackControl(self, X, X_d, X_d_next, config: RobotConfiguration):  # pylint: disable=too-many-arguments
         V, X_err = self.calc_V(X, X_d, X_d_next)
         J_e = self.calc_J_e(config)
         matrix_inv = scipy.linalg.pinv(J_e, atol=0.0001)
@@ -356,23 +368,23 @@ class Robot:
 
         return t
 
-    def end_effector_from_config(self, config):
-        T_s_b = self.robot_geometry.T_sb(config)
-        theta = config[3:8]
+    def end_effector_from_config(self, config: RobotConfiguration):
+        T_s_b = self.robot_geometry.T_sb(config.get_chassis_config())
+        theta = config.get_theta()
         T_0_e = FKinBody(self.M_0_e, self.Blist, theta)
         T_s_e = T_s_b @ self.robot_geometry.T_b_0() @ T_0_e
         return T_s_e
 
-    def main(self):  # pylint: disable=too-many-locals
-        config = self.initial_config
-        all_configurations = np.array([config])
+    def run(self) -> None:  # pylint: disable=too-many-locals
+        config: RobotConfiguration = self.initial_config
+        all_configurations = np.array([config.as_array()])
         all_X_err = []
 
         # First generate a reference trajectory using TrajectoryGenerator and set the initial robot configuration
         trajectory = self.TrajectoryGenerator(self.initial_planned_T_s_e, self.scene.T_sc_initial(), self.scene.T_sc_goal())
 
-        X = self.end_effector_from_config(config[:-1])
-        
+        X = self.end_effector_from_config(config)
+
         # Loops through the reference trajectory
         for i in range(len(trajectory) - 1):
             # Calculate the control law and generate the wheel and joint controls
@@ -388,14 +400,14 @@ class Robot:
             assert gripper in (0.0, 1.0)
             # Use controls, configuration, and timestep to calculate the new configuration
             speed_max = 10
-            config = self.NextState(config[:-1],
+            config = self.NextState(config,
                                controls,
                                speed_max)
-            config = np.append(config, gripper)
+            config.set_gripper(gripper)
 
             # store configuration for later animation
-            all_configurations = np.vstack([all_configurations, config])
-            X = self.end_effector_from_config(config[:-1])
+            all_configurations = np.vstack([all_configurations, config.as_array()])
+            X = self.end_effector_from_config(config)
 
         # Once the program has completed all iterations of the loop:
         # - write out the csv file of configurations: Load the csv file into the CSV Mobile Manipulation youBot scene (Scene 6) to see the results
@@ -409,4 +421,4 @@ class Robot:
 
 if __name__ == '__main__':
     robot = Robot()
-    robot.main()
+    robot.run()

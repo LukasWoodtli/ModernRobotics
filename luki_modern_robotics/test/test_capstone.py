@@ -6,7 +6,7 @@ from approvaltests import verify_file, Options
 from approvaltests.core import Comparator
 from approvaltests.namer import NamerFactory
 
-from ..capstone.mobile_manipulation import Robot
+from ..capstone.mobile_manipulation import Robot, RobotConfiguration
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -17,9 +17,12 @@ class NumpyComparator(Comparator):  # pylint: disable=too-few-public-methods
         pass
 
     def compare(self, received_path: str, approved_path: str) -> bool:
-        received = np.loadtxt(received_path, delimiter=',')
-        approved = np.loadtxt(approved_path, delimiter=',')
-        return np.allclose(received, approved)
+        try:
+            received = np.loadtxt(received_path, delimiter=',')
+            approved = np.loadtxt(approved_path, delimiter=',')
+            return np.allclose(received, approved)
+        except:  # pylint: disable=bare-except
+            return False
 
 
 testdata = [
@@ -33,15 +36,16 @@ testdata = [
 def test_NextState(name, u):
     robot = Robot()
     steps = 100
-    current_config = np.zeros(12)
+    current_config = RobotConfiguration(np.zeros(13))
     theta_dot = np.zeros(5)
     speeds = np.r_[theta_dot, u]
-    gripper_state = np.ones(0)
-    all_states = np.array(np.r_[current_config, gripper_state])
+    gripper_state = 0
+    current_config.set_gripper(gripper_state)
+    all_states = current_config.as_array()
     for _ in range(steps):
         current_config = robot.NextState(current_config, speeds, 5)
-        current_state = np.r_[current_config, gripper_state]
-        all_states = np.vstack([all_states, current_state])
+        current_config.set_gripper(gripper_state)
+        all_states = np.vstack([all_states, current_config.as_array()])
     output_file = os.path.join(DIR_PATH, f"output-{name}.csv")
     np.savetxt(output_file, all_states, delimiter=",")
     options = NamerFactory.with_parameters(name)
@@ -69,7 +73,7 @@ X_d_next = np.array([
 
 ])
 
-config = np.array([0, 0, 0, 0, 0, 0.2, -1.6, 0])
+config = RobotConfiguration(np.array([0, 0, 0, 0, 0, 0.2, -1.6, 0]))
 
 
 def test_calc_V():
@@ -124,7 +128,7 @@ def test_to_SE3():
 
 def test_main():
     robot = Robot()
-    robot.main()
+    robot.run()
 
     output_file = os.path.join(os.path.dirname(__file__), '..', 'capstone', 'output', 'output-trajectory.csv')
 
