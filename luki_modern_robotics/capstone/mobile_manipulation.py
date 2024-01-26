@@ -4,6 +4,7 @@ import numpy as np
 import scipy
 from modern_robotics import ScrewTrajectory, Adjoint, MatrixLog6, se3ToVec, JacobianBody, TransInv, FKinBody
 
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
 
 class RobotGeometry:
     def __init__(self):
@@ -430,16 +431,19 @@ class Robot:    # pylint: disable=too-few-public-methods
                                 self.k_i,
                                 self.delta_t
                                 )
+
         all_X_err, all_configurations = controller.controller_loop(config, trajectory)
 
-        # Once the program has completed all iterations of the loop:
-        # - write out the csv file of configurations: Load the csv file into the CSV Mobile Manipulation youBot scene (Scene 6) to see the results
-        DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-        output_dir = os.path.join(DIR_PATH, "output")
-        os.makedirs(output_dir, exist_ok=True)
-        np.savetxt(os.path.join(output_dir, "output-trajectory.csv"), all_configurations, delimiter=",")
-        # - Your program should also generate a file with the log of the X_err 6-vector as a function of time, suitable for plotting
-        np.savetxt(os.path.join(output_dir, "x_err.csv"), all_X_err, delimiter=",")
+        self.write_outputs_to_files(all_X_err, all_configurations)
+
+    @staticmethod
+    def write_outputs_to_files(all_X_err, all_configurations):
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        # File with list of configurations for CoppeliaSim
+        np.savetxt(os.path.join(OUTPUT_DIR, "output-trajectory.csv"), all_configurations, delimiter=",")
+        # File with the log of the X_err 6-vector as a function of time (used for plotting)
+        np.savetxt(os.path.join(OUTPUT_DIR, "x_err.csv"), all_X_err, delimiter=",")
+
 
 if __name__ == '__main__':
     robot = Robot()
