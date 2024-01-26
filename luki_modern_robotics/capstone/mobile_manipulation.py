@@ -1,5 +1,6 @@
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 from modern_robotics import ScrewTrajectory, Adjoint, MatrixLog6, se3ToVec, JacobianBody, TransInv, FKinBody
@@ -435,6 +436,14 @@ class Robot:    # pylint: disable=too-few-public-methods
         all_X_err, all_configurations = controller.controller_loop(config, trajectory)
 
         self.write_outputs_to_files(all_X_err, all_configurations)
+
+        self.save_error_plot(all_X_err)
+
+    @staticmethod
+    def save_error_plot(all_X_err):
+        fig, ax = plt.subplots()
+        ax.plot(all_X_err)
+        fig.savefig(os.path.join(OUTPUT_DIR, "x_err.png"))
 
     @staticmethod
     def write_outputs_to_files(all_X_err, all_configurations):
