@@ -7,7 +7,16 @@ from modern_robotics import ScrewTrajectory, Adjoint, MatrixLog6, se3ToVec, Jaco
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
 
+# Frames:
+#  `{s}`: fixed space frame
+#  `{b}`: mobile base (body) frame
+#  `{0}`: base of arm frame
+#  `{e}`: end effector frame
+#  `{c}`: cube (manipulated object) frame
+
+
 class RobotGeometry:
+    """Geometry of the robot and related functionality"""
     def __init__(self):
         self.r = 0.0475  # wheel radius (meters)
         self.l = 0.235  # center to the wheel axis (meters)
@@ -38,6 +47,7 @@ class RobotGeometry:
             [0, 0, 1, 0.0026],
             [0, 0, 0, 1]])
 
+    # home configuration of robot (all joint angles are zero)
     M_0_e = np.array([
         [1, 0, 0, 0.033],
         [0, 1, 0, 0],
@@ -45,6 +55,7 @@ class RobotGeometry:
         [0, 0, 0, 1]
     ])
 
+    # List of screw axes of robot
     Blist = np.array([
         [0, 0, 1, 0, 0.033, 0],
         [0, -1, 0, -0.5076, 0, 0],
@@ -55,35 +66,34 @@ class RobotGeometry:
 
 
 class RobotConfiguration:
+    """Configuration of the robot as 13-vector:
+    (chassis phi, chassis x, chassis y, J1, J2, J3, J4, J5, W1, W2, W3, W4, gripper state)
+    """
+
     def __init__(self, array: np.ndarray):
         self.configuration = array
 
     def as_array(self):
+        """Get the configuration as a Numpy array for calculations"""
         return self.configuration
 
     def set_gripper(self, gripper):
+        """Set the gripper value (closed: 1, opened: 0)"""
         self.configuration[12] = gripper
 
     def get_chassis_config(self):
-        """Get the chassis configuration from the state"""
+        """Get the chassis configuration (phi, x, y) from the state"""
         assert len(self.configuration) == 13
         return self.configuration[:3]
 
     def get_theta(self):
+        """Get the arm joint angles (J1, ..., J5)"""
         return self.configuration[3:8]
 
     def get_angles(self):
-        """Get all the joint and wheel angles from the state"""
+        """Get all the joint and wheel angles (J1, ..., J5, W1, ..., W4) from the state"""
         assert len(self.configuration) == 13
         return self.configuration[3:12]
-
-
-# Frames:
-#  `{s}`: fixed space frame
-#  `{b}`: mobile base (body) frame
-#  `{0}`: base of arm frame
-#  `{e}`: end effector frame
-#  `{c}`: cube (manipulated object) frame
 
 
 class Scene:
@@ -106,8 +116,36 @@ class Scene:
             [0, 0, 0, 1]])
 
 
+class SceneNewTask:
+    # Initial x = 1, y = 1
+    # Goal    x = 1, y = -1
+    @staticmethod
+    def T_sc_initial():
+        """Initial configuration of the cube `{c}` relative to the fixed frame `{s}`"""
+        return np.array([
+            [1, 0, 0, 1],
+            [0, 1, 0, 1],
+            [0, 0, 1, 0.025],
+            [0, 0, 0, 1]])
+
+    @staticmethod
+    def T_sc_goal():
+        """Goal configuration of the cube `{c}` relative to the fixed frame `{s}`"""
+        return np.array([
+            [0, 1, 0, 1],
+            [-1, 0, 0, -1],
+            [0, 0, 1, 0.025],
+            [0, 0, 0, 1]])
+
+
 class Planner:  # pylint: disable=too-few-public-methods
+    """Plan the trajectory"""
+
     def __init__(self, T_s_e_initial, scene: Scene, delta_t):
+        """Initialize the planner
+        :param T_se_initial: the initial position of the end effector
+        :param scene: the initial and goal position of the cube to be picked
+        """
         self.T_s_e_initial = T_s_e_initial
         self.T_sc_initial = scene.T_sc_initial()
         self.T_sc_goal = scene.T_sc_goal()
@@ -116,9 +154,6 @@ class Planner:  # pylint: disable=too-few-public-methods
     def trajectory_generator(self):
         """Generate trajectory for the pick and place task.
         Intermediate positions (standoff, picking, placing) are calculated with the given positions.
-        :param T_se_initial: the initial position of the end effector
-        :param T_sc_initial: the initial position of the cube to be picked
-        :param T_sc_final: the goal position of the cube
         :return: The trajectory for the given task"""
 
         waypoints = self._generate_waypoints()
@@ -228,7 +263,6 @@ class Controller:  # pylint: disable=too-few-public-methods
         :param wheel_and_joint_controls: 9-vector:
             - 5 arm joint speeds: theta_dot
             - 4 wheel speeds: u
-        :param delta_t: time step
         :param speed_max: maximum speed of wheels and joints
         """
 
@@ -436,8 +470,9 @@ class Robot:    # pylint: disable=too-few-public-methods
         all_X_err, all_configurations = controller.controller_loop(config, trajectory)
 
         self.write_outputs_to_files(all_X_err, all_configurations)
-
         self.save_error_plot(all_X_err)
+
+        print("Done.")
 
     @staticmethod
     def save_error_plot(all_X_err):
@@ -447,9 +482,11 @@ class Robot:    # pylint: disable=too-few-public-methods
 
     @staticmethod
     def write_outputs_to_files(all_X_err, all_configurations):
+        print("Generating animation csv file.")
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         # File with list of configurations for CoppeliaSim
         np.savetxt(os.path.join(OUTPUT_DIR, "output-trajectory.csv"), all_configurations, delimiter=",")
+        print("Writing error plot data.")
         # File with the log of the X_err 6-vector as a function of time (used for plotting)
         np.savetxt(os.path.join(OUTPUT_DIR, "x_err.csv"), all_X_err, delimiter=",")
 
