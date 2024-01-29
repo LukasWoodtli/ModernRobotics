@@ -1,4 +1,7 @@
+import dataclasses
 import os
+from collections import namedtuple
+from typing import Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -97,6 +100,7 @@ class RobotConfiguration:
 
 
 class Scene:
+    """The default scene with the starting and goal position of the cube"""
     @staticmethod
     def T_sc_initial():
         """Initial configuration of the cube `{c}` relative to the fixed frame `{s}`"""
@@ -117,6 +121,7 @@ class Scene:
 
 
 class SceneNewTask:
+    """A second scene with another starting and goal position of the cube"""
     # Initial x = 1, y = 1
     # Goal    x = 1, y = -1
     @staticmethod
@@ -170,7 +175,9 @@ class Planner:  # pylint: disable=too-few-public-methods
         return traj
 
     def _generate_waypoints(self):
-        """Generate all the main positions of the end-effector including gripper state and times required for the step"""
+        """Generate all the main positions of the end-effector including gripper state and times
+        required for the step
+        :return: The waypoint positions for the trajectory"""
         GRIPPER_OPEN = 0
         GRIPPER_CLOSED = 1
         _ = "unused"
@@ -180,24 +187,30 @@ class Planner:  # pylint: disable=too-few-public-methods
         standoff_2 = self._standoff_from_cube(self.T_sc_goal)
         grip_2 = self._grasp_from_cube(self.T_sc_goal)
 
-        waypoints = []  # (config, gripper, time_in_s)
-
-        waypoints.append((self.T_s_e_initial, GRIPPER_OPEN, _))
-        waypoints.append((standoff_1, GRIPPER_OPEN, 5))
-        waypoints.append((grip_1, GRIPPER_OPEN, 2))
-        waypoints.append((grip_1, GRIPPER_CLOSED, 1))
-        waypoints.append((standoff_1, GRIPPER_CLOSED, 1))
-        waypoints.append((standoff_2, GRIPPER_CLOSED, 5))
-        waypoints.append((grip_2, GRIPPER_CLOSED, 2))
-        waypoints.append((grip_2, GRIPPER_OPEN, 1))
-        waypoints.append((standoff_2, GRIPPER_OPEN, 1))
+        # (config, gripper, time_in_s)
+        waypoints = [
+            (self.T_s_e_initial, GRIPPER_OPEN, _),
+            (standoff_1, GRIPPER_OPEN, 5),
+            (grip_1, GRIPPER_OPEN, 2),
+            (grip_1, GRIPPER_CLOSED, 1),
+            (standoff_1, GRIPPER_CLOSED, 1),
+            (standoff_2, GRIPPER_CLOSED, 5),
+            (grip_2, GRIPPER_CLOSED, 2),
+            (grip_2, GRIPPER_OPEN, 1),
+            (standoff_2, GRIPPER_OPEN, 1)
+        ]
 
         return waypoints
 
-
     def _generate_trajectory(self, X_from, X_to, gripper, time_in_s):
-        """Generate trajectory from one position to another with a given time in seconds.
-        Also handle the given gripper state."""
+        """Generate part of the trajectory from one position to another with a given time in seconds.
+        Also handle the given gripper state.
+        :param X_from: starting position of the trajectory segment
+        :param X_end: end position of the trajectory segment
+        :param gripper: gripper state
+        :param time_in_s: time for the trajectory segment
+        :return: Calculated trajectory segment
+        """
         N = time_in_s / self.delta_t
         trajectory = ScrewTrajectory(X_from, X_to, time_in_s, N, 3)
 
@@ -238,11 +251,13 @@ class Planner:  # pylint: disable=too-few-public-methods
 
         return cube_config @ grasp
 
+
 class Controller:  # pylint: disable=too-few-public-methods
+    """The PI control algorithm"""
     def __init__(self, robot_geometry, k_p, k_i, delta_t):
         self.robot_geometry = robot_geometry
         self.k_p = k_p
-        self.k_i =  k_i
+        self.k_i = k_i
         self.delta_t = delta_t
         self.integral_X_err = np.zeros(6)
 
@@ -251,9 +266,10 @@ class Controller:  # pylint: disable=too-few-public-methods
         """Calculate new angles of joints and wheels for a time step"""
         return angles + speeds * delta_t
 
-    def _next_state(self, current_configuration: RobotConfiguration,
-                  wheel_and_joint_controls,
-                  speed_max: float) -> RobotConfiguration:
+    def _next_state(self,
+                    current_configuration: RobotConfiguration,
+                    wheel_and_joint_controls,
+                    speed_max: float) -> RobotConfiguration:
         """
         Calculates the next state of the robot with: euler step for the angles and odometry for the chassis configuration
         :param current_configuration: 12-vector:
@@ -264,6 +280,7 @@ class Controller:  # pylint: disable=too-few-public-methods
             - 5 arm joint speeds: theta_dot
             - 4 wheel speeds: u
         :param speed_max: maximum speed of wheels and joints
+        :return: Calculated next configuration of the robot
         """
 
         assert len(current_configuration.as_array()) == 13
@@ -326,6 +343,7 @@ class Controller:  # pylint: disable=too-few-public-methods
         return q_k + delta_q
 
     def _calc_J_base(self, config: RobotConfiguration):
+        """Calculate Jacobian of the base"""
         # J_base
         theta = config.get_theta()
         T_0_e = FKinBody(self.robot_geometry.M_0_e, self.robot_geometry.Blist, theta)
@@ -344,22 +362,25 @@ class Controller:  # pylint: disable=too-few-public-methods
         return J_base
 
     def _calc_J_arm(self, config: RobotConfiguration):
+        """Calculate Jacobian of the arm"""
         theta = config.get_theta()
         # J_arm (J_b)
         J_arm = JacobianBody(self.robot_geometry.Blist, theta)
         return J_arm
 
     def _calc_J_e(self, config: RobotConfiguration):
+        """Calculate Jacobian of the robot"""
         J_base = self._calc_J_base(config)
         J_arm = self._calc_J_arm(config)
         J_e = np.concatenate((J_arm, J_base), axis=1)
         return J_e
 
     def _calc_V(self, X, X_d, X_d_next):
-        """The PD control algorithm for the robot.
+        """Calculate the twist needed for the PD control algorithm for the robot.
         :param X: Current configuration of the end-effector (also written T_se)
         :param X_d: Desired configuration of the end-effector (also written T_se_d)
-        :param X_d_next: Desired configuration of the end-effector at next timestep (also written T_se_d_next)"""
+        :param X_d_next: Desired configuration of the end-effector at next timestep (also written T_se_d_next)
+        :return: The calculated twist for the PD controller"""
         K_p = self.k_p * np.eye(6)
         K_i = self.k_i * np.eye(6)
 
@@ -378,7 +399,18 @@ class Controller:  # pylint: disable=too-few-public-methods
 
         return V, X_err
 
-    def _feedback_control_step(self, X, X_d, X_d_next, config: RobotConfiguration):  # pylint: disable=too-many-arguments
+    def _feedback_control_step(self,
+                               X,
+                               X_d,
+                               X_d_next,
+                               config: RobotConfiguration):  # pylint: disable=too-many-arguments
+        """One step of the control algorithm
+        :param X: Current position of end-effector
+        :param X_d: Desired position of end-effector
+        :param X_d_next: Next desired position of end-effector
+        :param config: Configuration of the robot
+        :return: tuple of controls and the error
+        """
         V, X_err = self._calc_V(X, X_d, X_d_next)
         J_e = self._calc_J_e(config)
         matrix_inv = scipy.linalg.pinv(J_e, atol=0.0001)
@@ -389,6 +421,7 @@ class Controller:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def _to_SE3(waypoint):
+        """Converts a trajectory waypoint to a SE3 matrix"""
         assert len(waypoint) == 12
         r = waypoint[0:9].reshape((3, 3))
         p = waypoint[9:12]
@@ -399,14 +432,23 @@ class Controller:  # pylint: disable=too-few-public-methods
         return t
 
     def _end_effector_from_config(self, config: RobotConfiguration):
+        """Calculates the end-effector position from the robot configuration
+        :param config: the robot configuration
+        :return: the end-effector position"""
+        # transform from space frame {s} to the body frame {b}
         T_s_b = self.robot_geometry.T_sb(config.get_chassis_config())
         theta = config.get_theta()
+        # transform from the base of the robot arm {0} to the end-effector frame {e}
         T_0_e = FKinBody(self.robot_geometry.M_0_e, self.robot_geometry.Blist, theta)
+        # finally transform from the space frame {s} to the end-effector frame {e}
         T_s_e = T_s_b @ self.robot_geometry.T_b_0() @ T_0_e
         return T_s_e
 
-
     def controller_loop(self, config, trajectory):
+        """The complete controller loop.
+        :param config: The configuration of the robot
+        :param trajectory: The calculated trajectory for the end-effector
+        :return: list of all configurations for the task, list of all error"""
         all_configurations = np.array([config.as_array()])
         all_X_err = []
         X = self._end_effector_from_config(config)
@@ -436,25 +478,27 @@ class Controller:  # pylint: disable=too-few-public-methods
         return all_X_err, all_configurations
 
 
-class Robot:    # pylint: disable=too-few-public-methods
+class Robot:
+    initial_planned_T_s_e = np.array([[0, 0, 1, 0],
+                                      [0, 1, 0, 0],
+                                      [-1, 0, 0, 0.5],
+                                      [0, 0, 0, 1]
+                                      ])
 
-    def __init__(self):
-        self.robot_geometry = RobotGeometry()
-        self.scene = Scene()
-        self.initial_planned_T_s_e = np.array([[0,0,1,0],
-                                            [0,1,0,0],
-                                            [-1,0,0,0.5],
-                                            [0,0,0,1]
-                                            ])
+    initial_config = RobotConfiguration(np.array([np.pi / 4, -0.5, 0.5, 1, -0.2, 0.2, -1.6, 0, 0, 0, 0, 0, 0]))
 
-        self.initial_config = RobotConfiguration(np.array([np.pi / 4, -0.5, 0.5, 1, -0.2, 0.2, -1.6, 0, 0, 0, 0, 0, 0]))
-        # P gain value
-        self.k_p = 2
-        # I gain value
-        self.k_i = 0.01
-        self.delta_t = 0.01  # seconds
+    delta_t = 0.01  # seconds
+    robot_geometry = RobotGeometry()
+
+    def __init__(self, task):
+        """Initialize the robot for the task"""
+        self.name = task.name
+        self.scene = task.scene
+        self.control_gains = task.control_gains
+        self.output_base_dir = task.output_base_dir()
 
     def run(self) -> None:  # pylint: disable=too-many-locals
+        """Run the robot to achieve the desired task"""
         config: RobotConfiguration = self.initial_config
 
         # First generate a reference trajectory using TrajectoryGenerator and set the initial robot configuration
@@ -462,35 +506,56 @@ class Robot:    # pylint: disable=too-few-public-methods
         trajectory = planner.trajectory_generator()
 
         controller = Controller(self.robot_geometry,
-                                self.k_p,
-                                self.k_i,
+                                self.control_gains.k_p,
+                                self.control_gains.k_i,
                                 self.delta_t
                                 )
 
         all_X_err, all_configurations = controller.controller_loop(config, trajectory)
 
         self.write_outputs_to_files(all_X_err, all_configurations)
-        self.save_error_plot(all_X_err)
 
         print("Done.")
 
-    @staticmethod
-    def save_error_plot(all_X_err):
-        fig, ax = plt.subplots()
-        ax.plot(all_X_err)
-        fig.savefig(os.path.join(OUTPUT_DIR, "x_err.png"))
-
-    @staticmethod
-    def write_outputs_to_files(all_X_err, all_configurations):
+    def write_outputs_to_files(self, all_X_err, all_configurations):
+        """Write all necessary output files to corresponding folders"""
         print("Generating animation csv file.")
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        os.makedirs(self.output_base_dir, exist_ok=True)
         # File with list of configurations for CoppeliaSim
-        np.savetxt(os.path.join(OUTPUT_DIR, "output-trajectory.csv"), all_configurations, delimiter=",")
+        np.savetxt(os.path.join(self.output_base_dir, "coppelia-sim.csv"), all_configurations, delimiter=",")
         print("Writing error plot data.")
         # File with the log of the X_err 6-vector as a function of time (used for plotting)
-        np.savetxt(os.path.join(OUTPUT_DIR, "x_err.csv"), all_X_err, delimiter=",")
+        np.savetxt(os.path.join(self.output_base_dir, "x_err.csv"), all_X_err, delimiter=",")
+
+        # Plot error graph
+        fig, ax = plt.subplots()
+        ax.plot(all_X_err)
+        fig.savefig(os.path.join(self.output_base_dir, "x_err.png"))
+
+
+# The gains for the PI controller
+ControlGains = namedtuple('ControlGains', ['k_i', 'k_p'])
+
+
+@dataclasses.dataclass
+class Task:
+    """A task for the robot including name, controller gains and starting and goal positions of the cube."""
+
+    name: str  # The name of the task
+    control_gains: ControlGains  # The gains for the PI controller
+    scene: Union[Scene | SceneNewTask]  # The scene with the cube positions
+    base_dir: Optional[str] = None  # The base folder for the output files
+
+    def output_base_dir(self):
+        return self.base_dir if self.base_dir else os.path.join(OUTPUT_DIR, self.name)
 
 
 if __name__ == '__main__':
-    robot = Robot()
-    robot.run()
+    tasks = [
+        Task("overshoot", ControlGains(k_p=5, k_i=5), Scene()),
+        Task("best", ControlGains(k_p=2.0, k_i=0.0), Scene()),
+        Task("newTask", ControlGains(k_p=2.0, k_i=0.0), SceneNewTask()),
+    ]
+    for t in tasks:
+        robot = Robot(t)
+        robot.run()

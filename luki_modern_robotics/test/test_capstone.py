@@ -6,9 +6,11 @@ from approvaltests import verify_file, Options
 from approvaltests.core import Comparator
 from approvaltests.namer import NamerFactory
 
-from ..capstone.mobile_manipulation import Robot, RobotConfiguration, Controller
+from ..capstone.mobile_manipulation import Robot, RobotConfiguration, Controller, ControlGains, Task, Scene
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
+
+test_task = Task("test", ControlGains(k_p=2, k_i=0.01), Scene())
 
 
 class NumpyComparator(Comparator):  # pylint: disable=too-few-public-methods
@@ -34,8 +36,11 @@ testdata = [
 
 @pytest.mark.parametrize("name,u", testdata)
 def test_NextState(name, u):
-    robot = Robot()
-    controller = Controller(robot.robot_geometry, k_p=robot.k_p, k_i=robot.k_i, delta_t=robot.delta_t)
+    robot = Robot(test_task)
+    controller = Controller(robot.robot_geometry,
+                            k_p=robot.control_gains.k_p,
+                            k_i=robot.control_gains.k_i,
+                            delta_t=robot.delta_t)
     steps = 100
     current_config = RobotConfiguration(np.zeros(13))
     theta_dot = np.zeros(5)
@@ -78,7 +83,7 @@ config = RobotConfiguration(np.array([0, 0, 0, 0, 0, 0.2, -1.6, 0]))
 
 
 def test_calc_V():
-    robot = Robot()
+    robot = Robot(test_task)
     robot.k_p = 0
     robot.k_i = 0
     controller = Controller(robot_geometry=robot.robot_geometry, k_p=robot.k_p, k_i=robot.k_i, delta_t=robot.delta_t)
@@ -90,8 +95,11 @@ def test_calc_V():
 
 
 def test_calc_J_e():
-    robot = Robot()
-    controller = Controller(robot_geometry=robot.robot_geometry, k_p=robot.k_p, k_i=robot.k_i, delta_t=robot.delta_t)
+    robot = Robot(test_task)
+    controller = Controller(robot_geometry=robot.robot_geometry,
+                            k_p=robot.control_gains.k_p,
+                            k_i=robot.control_gains.k_i,
+                            delta_t=robot.delta_t)
     J_e = controller._calc_J_e(config)  # pylint: disable=protected-access
     expected = np.array(
         [[-0.98544973, 0, 0., 0., 0., 0.03039537, -0.03039537, -0.03039537, 0.03039537],
@@ -105,7 +113,7 @@ def test_calc_J_e():
 
 
 def test_calc_FeedbackControl():
-    robot = Robot()
+    robot = Robot(test_task)
     robot.k_p = 0
     robot.k_i = 0
     controller = Controller(robot_geometry=robot.robot_geometry, k_p=robot.k_p, k_i=robot.k_i, delta_t=robot.delta_t)
@@ -131,9 +139,10 @@ def test_to_SE3():
 
 
 def test_main():
-    robot = Robot()
+    robot = Robot(test_task)
+
     robot.run()
 
-    output_file = os.path.join(os.path.dirname(__file__), '..', 'capstone', 'output', 'output-trajectory.csv')
+    output_file = os.path.join(os.path.dirname(__file__), '..', 'capstone', 'output', 'test', 'coppelia-sim.csv')
 
     verify_file(output_file, options=Options().with_comparator(NumpyComparator()))
