@@ -1,6 +1,0 @@
-Running task 'overshoot' with:
-P control gain (k_p): 5
-I control gain (k_i): 5
-Generating animation csv file.
-Writing error plot data.
-Done.

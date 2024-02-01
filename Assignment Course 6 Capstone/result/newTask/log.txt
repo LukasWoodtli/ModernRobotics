@@ -1,6 +1,0 @@
-Running task 'newTask' with:
-P control gain (k_p): 2.0
-I control gain (k_i): 0.0
-Generating animation csv file.
-Writing error plot data.
-Done.
