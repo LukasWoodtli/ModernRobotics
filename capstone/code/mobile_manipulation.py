@@ -502,6 +502,10 @@ class Robot:
         """Run the robot to achieve the desired task"""
         config: RobotConfiguration = self.initial_config
 
+        print(f"Running task '{self.name}' with:")
+        print(f"P control gain (k_p): {self.control_gains.k_p}")
+        print(f"I control gain (k_i): {self.control_gains.k_i}")
+
         # First generate a reference trajectory using TrajectoryGenerator and set the initial robot configuration
         planner = Planner(self.initial_planned_T_s_e, self.scene, self.delta_t)
         trajectory = planner.trajectory_generator()
